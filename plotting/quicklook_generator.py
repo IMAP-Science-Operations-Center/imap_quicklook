@@ -14,28 +14,33 @@ import xarray as xr
 from cdflib.xarray import cdf_to_xarray
 from cdflib.xarray.cdf_to_xarray import ISTP_TO_XARRAY_ATTRS
 
+# Global variable for time conversion
 TTJ2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
 
 
 def load_cdf(
     file_path: Path | str, remove_xarray_attrs: bool = True, **kwargs: dict
 ) -> xr.Dataset:
-    """Load the contents of a CDF file into an ``xarray`` dataset.
+    """
+    Load a CDF file into an xarray.Dataset.
+
+    This function uses the `cdf_to_xarray` utility to parse a CDF file
+    and convert it into an `xarray.Dataset`. Optionally, metadata attributes
+    automatically added by `cdf_to_xarray` can be removed.
 
     Parameters
     ----------
-    file_path : Path or ImapFilePath or str
-        The path to the CDF file or ImapFilePath object.
-    remove_xarray_attrs : bool
-        Whether to remove the xarray attributes that get injected by the
-        cdf_to_xarray function from the output xarray.Dataset. Default is True.
+    file_path : Path or str
+        The path to the CDF file. Accepts a `pathlib.Path` or string.
+    remove_xarray_attrs : bool, default=True
+        If True, remove xarray attributes injected by `cdf_to_xarray`.
     **kwargs : dict, optional
-        Keyword arguments for ``cdf_to_xarray``.
+        Additional keyword arguments passed to `cdf_to_xarray`.
 
     Returns
     -------
-    dataset : xarray.Dataset
-        The ``xarray`` dataset for the CDF file.
+    xarray.Dataset
+        Parsed dataset representing the contents of the CDF file.
     """
     if isinstance(file_path, imap_data_access.ImapFilePath):
         file_path = file_path.construct_path()
@@ -61,7 +66,8 @@ def load_cdf(
 
 
 def dataset_into_xarray(file_name: str) -> xr.Dataset | bool:
-    """Use IMAP file name/directory structure to load a CDF file as a xr.Dataset.
+    """
+    Use IMAP file name/directory structure to load a CDF file as a xr.Dataset.
 
     Parameters
     ----------
@@ -103,17 +109,18 @@ def dataset_into_xarray(file_name: str) -> xr.Dataset | bool:
         return data_set
 
 
-def convert_j2000_to_utc(time_array: np.array) -> np.array:
-    """Convert time from j2000 to utc.
+def convert_j2000_to_utc(time_array: np.ndarray) -> np.ndarray:
+    """
+    Convert time from j2000 to utc.
 
     Parameters
     ----------
-    time_array : np.array
+    time_array : np.ndarray
         Desired array to convert from j200 to UTC.
 
     Returns
     -------
-    np.array
+    np.ndarray
         The newly converted UTC time array.
     """
     times = TTJ2000_EPOCH + time_array.astype("timedelta64[ns]")
@@ -121,8 +128,9 @@ def convert_j2000_to_utc(time_array: np.array) -> np.array:
 
 
 # TODO: Check the way this is handled.
-def generate_instrument_quicklook(filename: str):
-    """Determine which abstract class to use for a given file.
+def generate_instrument_quicklook(filename: str) -> QuicklookGenerator:
+    """
+    Determine which abstract class to use for a given file.
 
     Parameters
     ----------
@@ -132,8 +140,7 @@ def generate_instrument_quicklook(filename: str):
     Returns
     -------
     QuicklookGenerator
-    TODO: Write this better
-        This function returns a QuicklookGenerator abstract class.
+        Proper abstract class for file.
     """
     mission, instrument, level, descriptor, year_month, version_no = filename.split("_")
     for cls in (MagQuicklookGenerator, IdexQuicklookGenerator):
@@ -141,60 +148,85 @@ def generate_instrument_quicklook(filename: str):
             return cls(filename)
         except QuicklookGenerator.QuicklookGeneratorError:
             continue
-        raise ValueError(
-            f"Invalid input for {filename}. It does not match any file formats."
-        )
+
+    raise ValueError(
+        f"Invalid input for {filename}. It does not match any file formats."
+    )
 
 
 @dataclass
 class QuicklookGenerator(ABC):
-    """General Quicklooks class.
+    """
+    General Quicklooks class.
+
+    Parameters
+    ----------
+    file_name : str
+        Xarray dataset holding CDF file info.
 
     Attributes
     ----------
-    TODO: Add Info
+    data_set : xr.Dataset, optional
+        The xarray dataset for plotting.
+    x_variable : list of str, optional
+        List of x-axis variable names.
+    x_data : list of np.array, optional
+        Data for x-axis.
+    y_variable : list of str, optional
+        List of y-axis variable names.
+    y_data : list of np.array, optional
+        Data for y-axis.
+    title : str, optional
+        Title of the plot.
+    x_axis_label : str, optional
+        Label for the x-axis.
+    y_axis_label : str, optional
+        Label for the y-axis.
+    same_axes : bool, optional
+        Whether all subplots share the same axes.
     """
 
     # Plot Info
-    data_set: xr.Dataset = None
-    x_variable: list[str] = None
-    x_data: list[np.array] = None
-    y_variable: list[str] = None
-    y_data: list[np.array] = None
+    data_set: xr.Dataset | None = None
+    x_variable: list[str] | None = None
+    x_data: list[np.ndarray] | None = None
+    y_variable: list[str] | None = None
+    y_data: list[np.ndarray] | None = None
 
     # Making plots look pretty
-    title: str = None
-    x_axis_label: str = None
-    y_axis_label: str = None
-    same_axes: bool = None
+    title: str | None = None
+    x_axis_label: str | None = None
+    y_axis_label: str | None = None
+    same_axes: bool | None = None
 
-    def __init__(self, file_name):
-        """Initialize using a xr.Dataset.
-
-        Parameters
-        ----------
-        file_name: str
-            Xarray dataset holding CDF file info.
-        """
+    def __init__(self, file_name: str) -> None:
         # Plot Info
         self.data_set = dataset_into_xarray(file_name)
 
-        class QuicklookGeneratorError(Exception):
-            """Indicate that the QuicklookInput is invalid."""
+    class QuicklookGeneratorError(Exception):
+        """Indicate that the QuicklookInput is invalid."""
 
-            pass
+        pass
 
     @abstractmethod
-    def two_dimensional_plot(self):
-        """Lead to correct function that will generate the desired quicklook plot."""
+    def two_dimensional_plot(self, variable: str = "") -> None:
+        """
+        Lead to correct function that will generate the desired quicklook plot.
+
+        Parameters
+        ----------
+        variable : str
+            Variable to specify which quicklook plot to generate.
+        """
         raise NotImplementedError
 
 
 class MagQuicklookGenerator(QuicklookGenerator):
     """Mag subclass for mag quicklook plots."""
 
-    def two_dimensional_plot(self, variable: str):
-        """Lead to correct function that will generate the desired quicklook plot.
+    def two_dimensional_plot(self, variable: str = "") -> None:
+        """
+        Lead to correct function that will generate the desired quicklook plot.
 
         Parameters
         ----------
@@ -206,10 +238,13 @@ class MagQuicklookGenerator(QuicklookGenerator):
         elif variable == "rtn":
             self.rtn_comp_plot()
         elif variable == "gsm":
-            self.gsm_comp_plot()
+            self.gse_comp_plot()
 
-    def vector_comp_plot(self):
+    def vector_comp_plot(self) -> None:
         """Create xyz component quicklook for mag instrument."""
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
         num_lines = 3
         x_values = self.data_set["epoch"].values
         y_data = self.data_set["vectors"]
@@ -237,12 +272,13 @@ class MagQuicklookGenerator(QuicklookGenerator):
         plt.tight_layout()
         plt.show()
 
-    def rtn_comp_plot(self):
+    def rtn_comp_plot(self) -> None:
         """Create rtn component quicklook for mag instrument."""
         raise NotImplementedError
 
-    def gse_comp_plot(self):
-        """Create xyz component quicklook for mag instrument.
+    def gse_comp_plot(self) -> None:
+        """
+        Create xyz component quicklook for mag instrument.
 
         Returns
         -------
@@ -255,18 +291,29 @@ class MagQuicklookGenerator(QuicklookGenerator):
 class IdexQuicklookGenerator(QuicklookGenerator):
     """Idex subclass for Idex quicklook plots."""
 
-    def two_dimensional_plot(self):
-        """Lead to correct function that will generate the desired quicklook plot."""
+    def two_dimensional_plot(self, variable: str = "") -> None:
+        """
+        Lead to correct function that will generate the desired quicklook plot.
+
+        Parameters
+        ----------
+        variable : str
+            Variable to specify which quicklook plot to generate.
+        """
         self.idex_quicklook()
 
-    def idex_quicklook(self, time_index: int = 0):
-        """Determine which abstract class to use for a given file.
+    def idex_quicklook(self, time_index: int = 0) -> None:
+        """
+        Determine which abstract class to use for a given file.
 
         Parameters
         ----------
         time_index : int
             Desired time index to generate quicklook from.
         """
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
         num_plots = 6
         fig, axes = plt.subplots(
             num_plots,
@@ -327,6 +374,13 @@ class IdexQuicklookGenerator(QuicklookGenerator):
 class UltraQuicklookGenerator(QuicklookGenerator):
     """Ultra subclass for Idex quicklook plots."""
 
-    def two_dimensional_plot(self):
-        """Lead to correct function that will generate the desired quicklook plot."""
+    def two_dimensional_plot(self, variable: str = "") -> None:
+        """
+        Lead to correct function that will generate the desired quicklook plot.
+
+        Parameters
+        ----------
+        variable : str
+            Variable to specify which quicklook plot to generate.
+        """
         raise NotImplementedError
