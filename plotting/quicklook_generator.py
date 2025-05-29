@@ -270,11 +270,11 @@ class MagQuicklookGenerator(QuicklookGenerator):
 
         z_comp = y_data.isel({"direction": 2})
         axes[2].plot(x_values_dt, z_comp)
-        axes[2].set_ylabel(f"Vector {2}\n (x component)")
+        axes[2].set_ylabel(f"Vector {2}\n (z component)")
 
         axes[-1].set_xlabel("Time (ns)")
         fig.suptitle("XYZ Component Vectors (Magnetometer)")
-        plt.tight_layout()
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
         plt.show()
 
     def rtn_comp_plot(self) -> None:
