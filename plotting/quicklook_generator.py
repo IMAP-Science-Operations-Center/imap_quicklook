@@ -143,11 +143,10 @@ def generate_instrument_quicklook(filename: str) -> QuicklookGenerator:
         Proper abstract class for file.
     """
     mission, instrument, level, descriptor, year_month, version_no = filename.split("_")
-    for cls in (MagQuicklookGenerator, IdexQuicklookGenerator):
-        try:
-            return cls(filename)
-        except QuicklookGenerator.QuicklookGeneratorError:
-            continue
+    generator_map = {"mag": MagQuicklookGenerator, "idex": IdexQuicklookGenerator}
+    cls = generator_map.get(instrument)
+    if cls is not None:
+        return cls(filename)
 
     raise ValueError(
         f"Invalid input for {filename}. It does not match any file formats."
@@ -168,6 +167,8 @@ class QuicklookGenerator(ABC):
     ----------
     data_set : xr.Dataset, optional
         The xarray dataset for plotting.
+    instrument : str, optional
+        The instrument name derived from the file.
     x_variable : list of str, optional
         List of x-axis variable names.
     x_data : list of np.array, optional
@@ -188,6 +189,7 @@ class QuicklookGenerator(ABC):
 
     # Plot Info
     data_set: xr.Dataset | None = None
+    instrument: str | None = None
     x_variable: list[str] | None = None
     x_data: list[np.ndarray] | None = None
     y_variable: list[str] | None = None
@@ -202,6 +204,9 @@ class QuicklookGenerator(ABC):
     def __init__(self, file_name: str) -> None:
         # Plot Info
         self.data_set = dataset_into_xarray(file_name)
+        mission, self.instrument, level, descriptor, year_month, version_no = (
+            file_name.split("_")
+        )
 
     class QuicklookGeneratorError(Exception):
         """Indicate that the QuicklookInput is invalid."""
