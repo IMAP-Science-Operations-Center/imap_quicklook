@@ -21,7 +21,7 @@ mag_data.two_dimensional_plot("mag sensor co-ord")
 Through the use of abstract classes, the `two_dimensal_plot` member will call the correct graphing function for the desired instrument.
 
 This Git repository allows contributors to explore different xarray dataset variables being used to generate the
-quicklook plots, the code behind the QuicklookPlotGenerator class, and to propose bug fixes and changes.
+quicklook plots, the code behind the `QuicklookPlotGenerator` class, and to propose bug fixes and changes.
 
 [IMAP Website](https://imap.princeton.edu/)
 

@@ -36,7 +36,7 @@ repos:
     rev: 'v1.8.0'
     hooks:
       - id: numpydoc-validation
-        exclude: '^imap_processing/tests/|.*test.*'
+        exclude: '^/tests/|.*test.*'
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: 'v1.15.0'
     hooks:
