@@ -6,8 +6,6 @@ from plotting.quicklook_generator import (
     generate_instrument_quicklook,
 )
 
-# ruff: noqa: S101
-
 
 def test_generate_quicklook_instance():
     """Test if the correct class is generated."""

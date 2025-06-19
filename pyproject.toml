@@ -3,7 +3,7 @@ requires = ["poetry-core>=1.0.0,<2.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"
 build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry]
-name = "imap-processing"
+name = "imap-quicklook"
 # Gets updated dynamically by the poetry-dynamic-versioning plugin
 version = "0.0.0"
 description = "IMAP Science Operations Center Processing"
@@ -101,6 +101,7 @@ lint.ignore = [
   "RUF002",  # `−` (MINUS SIGN). Did you mean `-` (HYPHEN-MINUS) error
   "RUF200",  # pyproject missing field (poetry doesn't follow the spec)
   "S311",  # suspicious-non-cryptographic-random-usage
+    "S101" # Ignore use of assert statements
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -114,21 +115,6 @@ convention = "numpy"
 [tool.poetry.scripts]
 imap_cli = 'imap_processing.cli:main'
 imap_xtce = 'imap_processing.ccsds.excel_to_xtce:main'
-
-[tool.codespell]
-ignore-words-list = "livetime"
-
-[tool.poetry-dynamic-versioning]
-enable = true
-vcs = "git"
-
-[tool.poetry-dynamic-versioning.files."imap_processing/_version.py"]
-persistent-substitution = true
-initial-content = """
-  # These version placeholders will be replaced later during substitution.
-  __version__ = "0.0.0"
-  __version_tuple__ = (0, 0, 0)
-"""
 
 [tool.numpydoc_validation]
 checks = ["all", #report on all checks, except the following
