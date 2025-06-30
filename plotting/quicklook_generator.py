@@ -2,111 +2,17 @@
 
 from __future__ import annotations
 
-import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from pathlib import Path
 
-import imap_data_access
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from cdflib.xarray import cdf_to_xarray
-from cdflib.xarray.cdf_to_xarray import ISTP_TO_XARRAY_ATTRS
+
+from plotting.cdf.cdf_utils import dataset_into_xarray
 
 # Global variable for time conversion
 TTJ2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
-
-
-def load_cdf(
-    file_path: Path | str, remove_xarray_attrs: bool = True, **kwargs: dict
-) -> xr.Dataset:
-    """
-    Load a CDF file into an xarray.Dataset.
-
-    This function uses the `cdf_to_xarray` utility to parse a CDF file
-    and convert it into an `xarray.Dataset`. Optionally, metadata attributes
-    automatically added by `cdf_to_xarray` can be removed.
-
-    Parameters
-    ----------
-    file_path : Path or str
-        The path to the CDF file. Accepts a `pathlib.Path` or string.
-    remove_xarray_attrs : bool, default=True
-        If True, remove xarray attributes injected by `cdf_to_xarray`.
-    **kwargs : dict, optional
-        Additional keyword arguments passed to `cdf_to_xarray`.
-
-    Returns
-    -------
-    xarray.Dataset
-        Parsed dataset representing the contents of the CDF file.
-    """
-    if isinstance(file_path, imap_data_access.ImapFilePath):
-        file_path = file_path.construct_path()
-
-    dataset = cdf_to_xarray(file_path, kwargs)
-
-    # cdf_to_xarray converts single-value attributes to lists
-    # convert these back to single values where applicable
-    for attribute in dataset.attrs:
-        value = dataset.attrs[attribute]
-        if isinstance(value, list) and len(value) == 1:
-            dataset.attrs[attribute] = value[0]
-
-    # Remove attributes specific to xarray plotting from vars and coords
-    # TODO: This can be removed if/when feature is added to cdf_to_xarray to
-    #      make adding these attributes optional
-    if remove_xarray_attrs:
-        for key in dataset.variables.keys():
-            for xarray_key in ISTP_TO_XARRAY_ATTRS.values():
-                dataset[key].attrs.pop(xarray_key, None)
-
-    return dataset
-
-
-def dataset_into_xarray(file_name: str) -> xr.Dataset | bool:
-    """
-    Use IMAP file name/directory structure to load a CDF file as a xr.Dataset.
-
-    Parameters
-    ----------
-    file_name : str
-        Desired file to generate quicklook from.
-
-    Returns
-    -------
-    None
-        This function returns nothing.
-    """
-    # Pulls needed info from IMAP file name structure for file_path
-    mission, instrument, level, descriptor, year_month, version_no = file_name.split(
-        "_"
-    )
-    year = year_month[:4]
-    month = year_month[4:6]
-
-    # Define file_path
-    file_path = os.path.join(
-        os.path.dirname(__file__),
-        "data",
-        "imap",
-        instrument,
-        level,
-        year,
-        month,
-    )
-    full_path = os.path.join(file_path, file_name)
-    # print('Full Path: ' + full_path)
-
-    # Check if file exists
-    if not os.path.exists(full_path):
-        print("File does not exist")
-        return False
-    else:
-        # Create xr.Dataset for plotting purposes
-        data_set = load_cdf(full_path)
-        return data_set
 
 
 def convert_j2000_to_utc(time_array: np.ndarray) -> np.ndarray:
@@ -204,6 +110,8 @@ class QuicklookGenerator(ABC):
     def __init__(self, file_name: str) -> None:
         # Plot Info
         self.data_set = dataset_into_xarray(file_name)
+        if self.data_set is None:
+            raise FileNotFoundError(f"Could not find file: {file_name}")
         mission, self.instrument, level, descriptor, year_month, version_no = (
             file_name.split("_")
         )
