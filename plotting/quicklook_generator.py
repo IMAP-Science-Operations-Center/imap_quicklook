@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from imap_data_access import ScienceFilePath
 
 from plotting.cdf.cdf_utils import dataset_into_xarray
 
@@ -34,7 +35,7 @@ def convert_j2000_to_utc(time_array: np.ndarray) -> np.ndarray:
 
 
 # TODO: Check the way this is handled.
-def generate_instrument_quicklook(filename: str) -> QuicklookGenerator:
+def get_instrument_quicklook(filename: str) -> QuicklookGenerator:
     """
     Determine which abstract class to use for a given file.
 
@@ -48,15 +49,15 @@ def generate_instrument_quicklook(filename: str) -> QuicklookGenerator:
     QuicklookGenerator
         Proper abstract class for file.
     """
-    mission, instrument, level, descriptor, year_month, version_no = filename.split("_")
+    file_name_dict = ScienceFilePath.extract_filename_components(filename)
     generator_map = {"mag": MagQuicklookGenerator, "idex": IdexQuicklookGenerator}
-    cls = generator_map.get(instrument)
-    if cls is not None:
-        return cls(filename)
-
-    raise ValueError(
-        f"Invalid input for {filename}. It does not match any file formats."
-    )
+    cls = generator_map.get(file_name_dict["instrument"])
+    if cls is None:
+        raise ValueError(
+            f"No quicklooks found for {file_name_dict['instrument']} file {filename}. "
+            f"Valid instruments are {generator_map.keys()}"
+        )
+    return cls(filename)
 
 
 @dataclass
@@ -181,7 +182,7 @@ class MagQuicklookGenerator(QuicklookGenerator):
         axes[2].set_ylabel(f"Vector {2}\n (z component)")
 
         axes[-1].set_xlabel("Time (ns)")
-        fig.suptitle("XYZ Component Vectors (Magnetometer)")
+        fig.suptitle("XYZ Component Vectors (Magnetometer) nT")
         plt.tight_layout(rect=[0, 0, 1, 0.95])
         plt.show()
 
@@ -225,7 +226,7 @@ class IdexQuicklookGenerator(QuicklookGenerator):
             Desired time index to generate quicklook from.
         """
         if self.data_set is None:
-            raise ValueError("Must load in a dataset.")
+            raise RuntimeError("No data_set loaded.")
 
         num_plots = 6
         fig, axes = plt.subplots(

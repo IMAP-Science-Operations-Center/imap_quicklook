@@ -1,8 +1,10 @@
 [build-system]
+# TODO: Delete and start with poetry init
 requires = ["poetry-core>=1.0.0,<2.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
 build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry]
+# TODO: We dont need dynamic plug in. Figure out how to manage this
 name = "imap-quicklook"
 # Gets updated dynamically by the poetry-dynamic-versioning plugin
 version = "0.0.0"
@@ -70,7 +72,7 @@ map_visualization = ["healpy"]
 
 [project.urls]
 homepage = "https://github.com/IMAP-Science-Operations-Center"
-repository = "https://github.com/IMAP-Science-Operations-Center/imap_processing"
+repository = "https://github.com/IMAP-Science-Operations-Center/imap_quicklook"
 
 [tool.pytest.ini_options]
 testpaths = [
