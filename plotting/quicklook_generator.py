@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,32 +33,6 @@ def convert_j2000_to_utc(time_array: np.ndarray) -> np.ndarray:
     """
     times = TTJ2000_EPOCH + time_array.astype("timedelta64[ns]")
     return times
-
-
-# TODO: Check the way this is handled.
-def get_instrument_quicklook(filename: str) -> QuicklookGenerator:
-    """
-    Determine which abstract class to use for a given file.
-
-    Parameters
-    ----------
-    filename : str
-        Desired file to generate quicklook from.
-
-    Returns
-    -------
-    QuicklookGenerator
-        Proper abstract class for file.
-    """
-    file_name_dict = ScienceFilePath.extract_filename_components(filename)
-    generator_map = {"mag": MagQuicklookGenerator, "idex": IdexQuicklookGenerator}
-    cls = generator_map.get(file_name_dict["instrument"])
-    if cls is None:
-        raise ValueError(
-            f"No quicklooks found for {file_name_dict['instrument']} file {filename}. "
-            f"Valid instruments are {generator_map.keys()}"
-        )
-    return cls(filename)
 
 
 @dataclass
@@ -218,7 +193,7 @@ class IdexQuicklookGenerator(QuicklookGenerator):
 
     def idex_quicklook(self, time_index: int = 0) -> None:
         """
-        Determine which abstract class to use for a given file.
+        Generate event based idex quicklook plot.
 
         Parameters
         ----------
@@ -238,47 +213,149 @@ class IdexQuicklookGenerator(QuicklookGenerator):
         )
 
         # TOF_Low
+        y_data_tof_low = self.data_set["TOF_Low"].isel(epoch=time_index).data
         axes[0].plot(
             self.data_set["time_high_sample_rate"].isel(epoch=time_index).data,
-            self.data_set["TOF_Low"].isel(epoch=time_index).data,
+            y_data_tof_low,
         )
-        axes[0].axvline(x=0, color="red", linestyle="--")
+        axes[0].axvline(x=0, color="red", linestyle="-")
         axes[0].set_ylabel("TOF_Low")
+        text = (
+            f"min = {y_data_tof_low.min():.3f}\n"
+            f"max = {y_data_tof_low.max():.3f}\n"
+            f"mean = {y_data_tof_low.mean():.3f}\n"
+            f"std = {y_data_tof_low.std():.3f}"
+        )
+        axes[0].text(
+            1.02,
+            1,
+            text,
+            transform=axes[0].transAxes,
+            ha="left",
+            va="top",
+            fontsize=10,
+            family="monospace",
+        )
         # TOF_Mid
+        y_data_tof_mid = self.data_set["TOF_Mid"].isel(epoch=time_index).data
         axes[1].plot(
             self.data_set["time_high_sample_rate"].isel(epoch=time_index).data,
-            self.data_set["TOF_Mid"].isel(epoch=time_index).data,
+            y_data_tof_mid,
         )
-        axes[1].axvline(x=0, color="red", linestyle="--")
+        axes[1].axvline(x=0, color="red", linestyle="-")
         axes[1].set_ylabel("TOF_Mid")
+        text = (
+            f"min = {y_data_tof_mid.min():.3f}\n"
+            f"max = {y_data_tof_mid.max():.3f}\n"
+            f"mean = {y_data_tof_mid.mean():.3f}\n"
+            f"std = {y_data_tof_mid.std():.3f}"
+        )
+        axes[1].text(
+            1.02,
+            1,
+            text,
+            transform=axes[1].transAxes,
+            ha="left",
+            va="top",
+            fontsize=10,
+            family="monospace",
+        )
         # TOF_High
+        y_data_tof_high = self.data_set["TOF_High"].isel(epoch=time_index).data
         axes[2].plot(
             self.data_set["time_high_sample_rate"].isel(epoch=time_index).data,
-            self.data_set["TOF_High"].isel(epoch=time_index).data,
+            y_data_tof_high,
         )
-        axes[2].axvline(x=0, color="red", linestyle="--")
+        axes[2].axvline(x=0, color="red", linestyle="-")
         axes[2].set_ylabel("TOF_High")
+        text = (
+            f"min = {y_data_tof_high.min():.3f}\n"
+            f"max = {y_data_tof_high.max():.3f}\n"
+            f"mean = {y_data_tof_high.mean():.3f}\n"
+            f"std = {y_data_tof_high.std():.3f}"
+        )
+        axes[2].text(
+            1.02,
+            1,
+            text,
+            transform=axes[2].transAxes,
+            ha="left",
+            va="top",
+            fontsize=10,
+            family="monospace",
+        )
         # Ion_grid
+        y_data_ion_grid = self.data_set["Ion_Grid"].isel(epoch=time_index).data
         axes[3].plot(
             self.data_set["time_low_sample_rate"].isel(epoch=time_index).data,
             self.data_set["Ion_Grid"].isel(epoch=time_index).data,
         )
         axes[3].axvline(x=0, color="red")
         axes[3].set_ylabel("Ion Grid")
+        text = (
+            f"min = {y_data_ion_grid.min():.3f}\n"
+            f"max = {y_data_ion_grid.max():.3f}\n"
+            f"mean = {y_data_ion_grid.mean():.3f}\n"
+            f"std = {y_data_ion_grid.std():.3f}"
+        )
+        axes[3].text(
+            1.02,
+            1,
+            text,
+            transform=axes[3].transAxes,
+            ha="left",
+            va="top",
+            fontsize=10,
+            family="monospace",
+        )
         # Target Low
+        y_data_target_low = self.data_set["Target_Low"].isel(epoch=time_index).data
         axes[4].plot(
             self.data_set["time_low_sample_rate"].isel(epoch=time_index).data,
-            self.data_set["Target_Low"].isel(epoch=time_index).data,
+            y_data_target_low,
         )
-        axes[4].axvline(x=0, color="red", linestyle="--")
+        axes[4].axvline(x=0, color="red", linestyle="-")
         axes[4].set_ylabel("Target Low")
+        text = (
+            f"min = {y_data_target_low.min():.3f}\n"
+            f"max = {y_data_target_low.max():.3f}\n"
+            f"mean = {y_data_target_low.mean():.3f}\n"
+            f"std = {y_data_target_low.std():.3f}"
+        )
+        axes[4].text(
+            1.02,
+            1,
+            text,
+            transform=axes[4].transAxes,
+            ha="left",
+            va="top",
+            fontsize=10,
+            family="monospace",
+        )
         # Target_high
+        y_data_target_high = self.data_set["Target_High"].isel(epoch=time_index).data
         axes[5].plot(
             self.data_set["time_low_sample_rate"].isel(epoch=time_index).data,
-            self.data_set["Target_High"].isel(epoch=time_index).data,
+            y_data_target_high,
         )
-        axes[5].axvline(x=0, color="red", linestyle="--")
+        axes[5].axvline(x=0, color="red", linestyle="-")
         axes[5].set_ylabel("Target High")
+        text = (
+            f"min = {y_data_target_high.min():.3f}\n"
+            f"max = {y_data_target_high.max():.3f}\n"
+            f"mean = {y_data_target_high.mean():.3f}\n"
+            f"std = {y_data_target_high.std():.3f}"
+        )
+        axes[5].text(
+            1.02,
+            1,
+            text,
+            transform=axes[5].transAxes,
+            ha="left",
+            va="top",
+            fontsize=10,
+            family="monospace",
+        )
 
         axes[-1].set_xlabel("Time (μs)")
         fig.suptitle("IDEX L1A Dust Impact Waveforms")
@@ -286,7 +363,7 @@ class IdexQuicklookGenerator(QuicklookGenerator):
 
 
 class UltraQuicklookGenerator(QuicklookGenerator):
-    """Ultra subclass for Idex quicklook plots."""
+    """Ultra subclass for ultra quicklook plots."""
 
     def two_dimensional_plot(self, variable: str = "") -> None:
         """
@@ -297,4 +374,62 @@ class UltraQuicklookGenerator(QuicklookGenerator):
         variable : str
             Variable to specify which quicklook plot to generate.
         """
+        if variable == "ultra status":
+            self.ultra_status_plot()
+        elif variable == "ultra hv":
+            self.ultra_hv_plot()
+        elif variable == "ultra general rates 1":
+            self.ultra_general_rates_1_plot()
+        elif variable == "ultra general rates 2":
+            self.ultra_general_rates_2_plot()
+
+    def ultra_status_plot(self) -> None:
+        """Generate Ultra status plot."""
         raise NotImplementedError
+
+    def ultra_hv_plot(self) -> None:
+        """Generate Ultra hv plot."""
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
+        raise NotImplementedError
+
+    def ultra_general_rates_1_plot(self) -> None:
+        """Generate Ultra general rates 1 plot."""
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
+        raise NotImplementedError
+
+    def ultra_general_rates_2_plot(self) -> None:
+        """Generate Ultra general rates 2 plot."""
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
+        raise NotImplementedError
+
+
+class QuicklookGeneratorType(Enum):
+    """Map instrument to correct dataclass."""
+
+    MAG = MagQuicklookGenerator
+    IDEX = IdexQuicklookGenerator
+
+
+def get_instrument_quicklook(filename: str) -> QuicklookGenerator:
+    """
+    Determine which abstract class to use for a given file.
+
+    Parameters
+    ----------
+    filename : str
+        Desired file to generate quicklook from.
+
+    Returns
+    -------
+    QuicklookGenerator
+        Proper abstract class for file.
+    """
+    file_name_dict = ScienceFilePath.extract_filename_components(filename)
+    gen_cls = QuicklookGeneratorType[file_name_dict["instrument"].upper()]
+    return gen_cls.value(filename)
