@@ -1,4 +1,4 @@
-"""Helper functions for loading in and managing CDf files."""
+"""Helper functions for loading in, and managing CDf files."""
 
 from __future__ import annotations
 
@@ -81,6 +81,10 @@ def dataset_into_xarray(file_name: str) -> xr.Dataset | None:
     -------
     None
         This function returns nothing.
+
+    Notes
+    -----
+    This function only requires the file name, and not the whole path in load_cdf.
     """
     file_name_dict = ScienceFilePath.extract_filename_components(file_name)
     # print(file_name_dict)
