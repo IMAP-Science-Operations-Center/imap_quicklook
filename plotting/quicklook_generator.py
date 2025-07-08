@@ -72,6 +72,7 @@ class QuicklookGenerator(ABC):
     # Plot Info
     data_set: xr.Dataset | None = None
     instrument: str | None = None
+    # TODO: The following 4 attributes are never used.
     x_variable: list[str] | None = None
     x_data: list[np.ndarray] | None = None
     y_variable: list[str] | None = None
@@ -88,10 +89,11 @@ class QuicklookGenerator(ABC):
         self.data_set = dataset_into_xarray(file_name)
         if self.data_set is None:
             raise FileNotFoundError(f"Could not find file: {file_name}")
-        mission, self.instrument, level, descriptor, year_month, version_no = (
-            file_name.split("_")
-        )
 
+        file_name_dict = ScienceFilePath.extract_filename_components(file_name)
+        self.instrument = file_name_dict["instrument"]
+
+    # TODO: Why do I have this?
     class QuicklookGeneratorError(Exception):
         """Indicate that the QuicklookInput is invalid."""
 
@@ -111,7 +113,7 @@ class QuicklookGenerator(ABC):
 
 
 class MagQuicklookGenerator(QuicklookGenerator):
-    """Mag subclass for mag quicklook plots."""
+    """MAG subclass for MAG quicklook plots."""
 
     def two_dimensional_plot(self, variable: str = "") -> None:
         """
@@ -122,12 +124,13 @@ class MagQuicklookGenerator(QuicklookGenerator):
         variable : str
             Variable to specify which quicklook plot to generate.
         """
-        if variable == "mag sensor co-ord":
-            self.vector_comp_plot()
-        elif variable == "rtn":
-            self.rtn_comp_plot()
-        elif variable == "gsm":
-            self.gse_comp_plot()
+        match variable:
+            case "mag sensor co-ord":
+                self.vector_comp_plot()
+            case "rtn":
+                self.rtn_comp_plot()
+            case "gse":
+                self.gse_comp_plot()
 
     def vector_comp_plot(self) -> None:
         """Create xyz component quicklook for mag instrument."""
@@ -136,7 +139,7 @@ class MagQuicklookGenerator(QuicklookGenerator):
 
         num_lines = 3
         x_values = self.data_set["epoch"].values
-        y_data = self.data_set["vectors"]
+        vector_data = self.data_set["vectors"]
 
         x_values_dt = convert_j2000_to_utc(x_values)
 
@@ -144,20 +147,20 @@ class MagQuicklookGenerator(QuicklookGenerator):
             nrows=num_lines, ncols=1, figsize=(10, 3 * num_lines), sharex=True
         )
 
-        x_comp = y_data.isel({"direction": 0})
+        x_comp = vector_data.isel({"direction": 0})
         axes[0].plot(x_values_dt, x_comp)
         axes[0].set_ylabel(f"Vector {0}\n (x component)")
 
-        y_comp = y_data.isel({"direction": 1})
+        y_comp = vector_data.isel({"direction": 1})
         axes[1].plot(x_values_dt, y_comp)
         axes[1].set_ylabel(f"Vector {1}\n (y component)")
 
-        z_comp = y_data.isel({"direction": 2})
+        z_comp = vector_data.isel({"direction": 2})
         axes[2].plot(x_values_dt, z_comp)
         axes[2].set_ylabel(f"Vector {2}\n (z component)")
 
         axes[-1].set_xlabel("Time (ns)")
-        fig.suptitle("XYZ Component Vectors (Magnetometer) nT")
+        fig.suptitle("XYZ Component Vectors -- Magnetometer (nT)")
         plt.tight_layout(rect=[0, 0, 1, 0.95])
         plt.show()
 
@@ -166,19 +169,12 @@ class MagQuicklookGenerator(QuicklookGenerator):
         raise NotImplementedError
 
     def gse_comp_plot(self) -> None:
-        """
-        Create xyz component quicklook for mag instrument.
-
-        Returns
-        -------
-        None
-            This function returns nothing.
-        """
+        """Create gse component quicklook for mag instrument."""
         raise NotImplementedError
 
 
 class IdexQuicklookGenerator(QuicklookGenerator):
-    """Idex subclass for Idex quicklook plots."""
+    """IDEX subclass for IDEX quicklook plots."""
 
     def two_dimensional_plot(self, variable: str = "") -> None:
         """
@@ -193,7 +189,7 @@ class IdexQuicklookGenerator(QuicklookGenerator):
 
     def idex_quicklook(self, time_index: int = 0) -> None:
         """
-        Generate event based idex quicklook plot.
+        Generate event based IDEX quicklook plot.
 
         Parameters
         ----------
@@ -363,7 +359,7 @@ class IdexQuicklookGenerator(QuicklookGenerator):
 
 
 class UltraQuicklookGenerator(QuicklookGenerator):
-    """Ultra subclass for ultra quicklook plots."""
+    """ULTRA subclass for ULTRA quicklook plots."""
 
     def two_dimensional_plot(self, variable: str = "") -> None:
         """
@@ -414,6 +410,7 @@ class QuicklookGeneratorType(Enum):
 
     MAG = MagQuicklookGenerator
     IDEX = IdexQuicklookGenerator
+    ULTRA = UltraQuicklookGenerator
 
 
 def get_instrument_quicklook(filename: str) -> QuicklookGenerator:
