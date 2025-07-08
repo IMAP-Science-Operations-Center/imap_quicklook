@@ -43,6 +43,5 @@ repos:
       - id: mypy
         exclude: .*(tests|docs).*
         additional_dependencies: [ numpy==1.26.4 ]
-
 default_language_version:
   python: python3.12
