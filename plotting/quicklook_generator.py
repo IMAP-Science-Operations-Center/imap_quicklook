@@ -405,12 +405,111 @@ class UltraQuicklookGenerator(QuicklookGenerator):
         raise NotImplementedError
 
 
+class SwapiQuicklookGenerator(QuicklookGenerator):
+    """SWAPI subclass for ULTRA quicklook plots."""
+
+    def two_dimensional_plot(self, variable: str = "") -> None:
+        """
+        Lead to correct function that will generate the desired quicklook plot.
+
+        Parameters
+        ----------
+        variable : str
+            Variable to specify which quicklook plot to generate.
+        """
+        match variable:
+            case "count rates":
+                self.swapi_count_rates()
+            case "absolute detection efficiency":
+                self.swapi_absolute_detection_efficiency()
+            case "count line":
+                self.swapi_count_line()
+
+    def swapi_count_rates(self) -> None:
+        """Generate SWAPI count rates plot."""
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
+        # Time data
+        x_values = self.data_set["epoch"].values
+        x_values_dt = convert_j2000_to_utc(x_values)
+
+        # Energy values from strings to numbers
+        energy_labels = self.data_set["energy_label"].values.astype(float)
+
+        # Get count rate data
+        sw_counts = self.data_set["swp_pcem_rate"].values
+        pui_counts = self.data_set["swp_scem_rate"].values
+
+        fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True, sharey=True)
+
+        # Plot SW
+        pcm1 = axes[0].pcolormesh(
+            x_values_dt, energy_labels, sw_counts.T, shading="auto", cmap="viridis"
+        )
+        axes[0].set_title("SWP PCEM Count Rate")
+        axes[0].set_ylabel("Energy per charge (eV/q)")
+        fig.colorbar(pcm1, ax=axes[0], label="Counts")
+
+        # Plot PUI
+        pcm2 = axes[1].pcolormesh(
+            x_values_dt, energy_labels, pui_counts.T, shading="auto", cmap="viridis"
+        )
+        axes[1].set_title("SWP SCEM Count Rate")
+        axes[1].set_xlabel("Time (UTC)")
+        axes[1].set_ylabel("Energy per charge (eV/q)")
+        fig.colorbar(pcm2, ax=axes[1], label="Counts")
+
+        plt.tight_layout()
+        plt.show()
+
+    def swapi_count_line(self) -> None:
+        """Generate SWAPI count rates LINE plot."""
+
+        print("Hello there")
+
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
+            # Time data
+            x_values = self.data_set["epoch"].values
+            x_values_dt = convert_j2000_to_utc(x_values)
+
+            # Get count rate data
+            sw_rate = self.data_set["swp_pcem_rate"]
+            sw_total_counts = sw_rate.sum(dim="energy_label")
+            pui_rate = self.data_set["swp_scem_rate"]
+            pui_total_counts = pui_rate.sum(dim="energy_label")
+
+            fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True, sharey=True)
+
+            # Plot SW
+            axes[0].plot(x_values_dt, sw_total_counts, color="dodgerblue", marker="o")
+            axes[0].set_title("SW PCEM Total Count Rate")
+            axes[0].set_ylabel("Counts")
+
+            # Plot PUI
+            axes[1].plot(x_values_dt, pui_total_counts, color="tomato", marker="o")
+            axes[1].set_title("PUI SCEM Total Count Rate")
+            axes[1].set_xlabel("Time (UTC)")
+            axes[1].set_ylabel("Counts")
+
+            # Improve layout
+            plt.tight_layout()
+            plt.show()
+
+    def swapi_absolute_detection_efficiency(self) -> None:
+        """Generate detection graph."""
+        raise NotImplementedError
+
+
 class QuicklookGeneratorType(Enum):
     """Map instrument to correct dataclass."""
 
     MAG = MagQuicklookGenerator
     IDEX = IdexQuicklookGenerator
     ULTRA = UltraQuicklookGenerator
+    SWAPI = SwapiQuicklookGenerator
 
 
 def get_instrument_quicklook(filename: str) -> QuicklookGenerator:
