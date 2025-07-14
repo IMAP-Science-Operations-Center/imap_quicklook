@@ -1,0 +1,47 @@
+ci:
+  autofix_prs: false
+  autoupdate_schedule: 'quarterly'
+  skip: [poetry-lock]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+    - id: check-added-large-files
+      args: ['--maxkb=1000']
+    - id: detect-aws-credentials
+      args: [--allow-missing-credentials]
+    - id: detect-private-key
+    - id: mixed-line-ending
+    - id: trailing-whitespace
+    - id: no-commit-to-branch
+      args: [--branch, main, --branch, dev]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 'v0.11.4'
+    hooks:
+    - id: ruff
+      args: [--fix]
+    - id: ruff-format
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        files: ^.*\.(py|md|rst|yml)$
+  - repo: https://github.com/python-poetry/poetry
+    rev: '1.8.0'  # add version here
+    hooks:
+      - id: poetry-check
+      - id: poetry-lock
+        args: [--no-update]
+  - repo: https://github.com/numpy/numpydoc
+    rev: 'v1.8.0'
+    hooks:
+      - id: numpydoc-validation
+        exclude: '^/tests/|.*test.*'
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: 'v1.15.0'
+    hooks:
+      - id: mypy
+        exclude: .*(tests|docs).*
+        additional_dependencies: [ numpy==1.26.4 ]
+default_language_version:
+  python: python3.12
