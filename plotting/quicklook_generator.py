@@ -463,10 +463,40 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
         plt.tight_layout()
         plt.show()
 
+    def swapi_absolute_detection_efficiency(self) -> None:
+        """Graph SWAPI absolute detection efficiency."""
+        # coincidence^2 / (primary*secondary)
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
+        # Time data
+        x_values = self.data_set["epoch"].values
+        x_values_dt = convert_j2000_to_utc(x_values)
+
+        # Get count rate data
+        sw_rate = self.data_set["swp_pcem_rate"]
+        sw_total_counts = sw_rate.sum(dim="energy")
+
+        pui_rate = self.data_set["swp_scem_rate"]
+        pui_total_counts = pui_rate.sum(dim="energy")
+
+        coin_rate = self.data_set["swp_coin_rate"]
+        coin_total_counts = coin_rate.sum(dim="energy")
+
+        denom = sw_total_counts * pui_total_counts
+        line = (coin_total_counts**2) / (denom)
+        line = line.where(denom != 0)
+
+        plt.plot(x_values_dt, line)
+        plt.title("SWAPI Absolute Detection Efficiency")
+        plt.xlabel("Time (UTC)")
+        plt.ylabel("Coincidence² / (Primary × Secondary)")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
     def swapi_count_line(self) -> None:
         """Generate SWAPI count rates LINE plot."""
-
-        print("Hello there")
 
         if self.data_set is None:
             raise ValueError("Must load in a dataset.")
@@ -507,10 +537,6 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
         # Improve layout
         plt.tight_layout()
         plt.show()
-
-    def swapi_absolute_detection_efficiency(self) -> None:
-        """Generate detection graph."""
-        raise NotImplementedError
 
 
 class QuicklookGeneratorType(Enum):
