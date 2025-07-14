@@ -93,7 +93,6 @@ class QuicklookGenerator(ABC):
         file_name_dict = ScienceFilePath.extract_filename_components(file_name)
         self.instrument = file_name_dict["instrument"]
 
-    # TODO: Why do I have this?
     class QuicklookGeneratorError(Exception):
         """Indicate that the QuicklookInput is invalid."""
 
@@ -126,13 +125,13 @@ class MagQuicklookGenerator(QuicklookGenerator):
         """
         match variable:
             case "mag sensor co-ord":
-                self.vector_comp_plot()
+                self.vector_component_plot()
             case "rtn":
                 self.rtn_comp_plot()
             case "gse":
                 self.gse_comp_plot()
 
-    def vector_comp_plot(self) -> None:
+    def vector_component_plot(self) -> None:
         """Create xyz component quicklook for mag instrument."""
         if self.data_set is None:
             raise ValueError("Must load in a dataset.")
@@ -370,14 +369,15 @@ class UltraQuicklookGenerator(QuicklookGenerator):
         variable : str
             Variable to specify which quicklook plot to generate.
         """
-        if variable == "ultra status":
-            self.ultra_status_plot()
-        elif variable == "ultra hv":
-            self.ultra_hv_plot()
-        elif variable == "ultra general rates 1":
-            self.ultra_general_rates_1_plot()
-        elif variable == "ultra general rates 2":
-            self.ultra_general_rates_2_plot()
+        match variable:
+            case "ultra status":
+                self.ultra_status_plot()
+            case "ultra hv":
+                self.ultra_hv_plot()
+            case "ultra general rates 1":
+                self.ultra_general_rates_1_plot()
+            case "ultra general rates 2":
+                self.ultra_general_rates_2_plot()
 
     def ultra_status_plot(self) -> None:
         """Generate Ultra status plot."""

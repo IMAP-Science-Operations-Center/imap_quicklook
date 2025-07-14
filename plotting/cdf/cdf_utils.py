@@ -1,4 +1,5 @@
 """Helper functions for loading in, and managing CDf files."""
+# TODO: If this repo moves to depending on imap_processing, remove this file and move to the functions there.
 
 from __future__ import annotations
 
