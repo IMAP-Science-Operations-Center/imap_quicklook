@@ -506,6 +506,7 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
         x_values_dt = convert_j2000_to_utc(x_values)
 
         # Get count rate data
+        # TODO: Ensure energy=0 is correct
         sw_rate = self.data_set["swp_pcem_rate"]
         sw_rate_single = sw_rate.isel(energy=0)
         # sw_total_counts = sw_rate.sum(dim="energy")
