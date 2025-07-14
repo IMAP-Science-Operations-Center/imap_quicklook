@@ -6,7 +6,7 @@ other individuals working on the IMAP teams ranging from software to science.
 
 In order to produce the quicklook plots coded here you must:
 
-1.) Initialize a QuicklookGenerator object taking in the file name you wish to plot.
+1.) Initialize a `QuicklookGenerator` object taking in the file name you wish to plot.
 
 2.) Call the method `two_dimensional_plot()` method on the `data_set` member.
 

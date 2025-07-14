@@ -93,7 +93,6 @@ class QuicklookGenerator(ABC):
         file_name_dict = ScienceFilePath.extract_filename_components(file_name)
         self.instrument = file_name_dict["instrument"]
 
-    # TODO: Why do I have this?
     class QuicklookGeneratorError(Exception):
         """Indicate that the QuicklookInput is invalid."""
 
@@ -126,13 +125,13 @@ class MagQuicklookGenerator(QuicklookGenerator):
         """
         match variable:
             case "mag sensor co-ord":
-                self.vector_comp_plot()
+                self.vector_component_plot()
             case "rtn":
                 self.rtn_comp_plot()
             case "gse":
                 self.gse_comp_plot()
 
-    def vector_comp_plot(self) -> None:
+    def vector_component_plot(self) -> None:
         """Create xyz component quicklook for mag instrument."""
         if self.data_set is None:
             raise ValueError("Must load in a dataset.")
@@ -370,14 +369,15 @@ class UltraQuicklookGenerator(QuicklookGenerator):
         variable : str
             Variable to specify which quicklook plot to generate.
         """
-        if variable == "ultra status":
-            self.ultra_status_plot()
-        elif variable == "ultra hv":
-            self.ultra_hv_plot()
-        elif variable == "ultra general rates 1":
-            self.ultra_general_rates_1_plot()
-        elif variable == "ultra general rates 2":
-            self.ultra_general_rates_2_plot()
+        match variable:
+            case "ultra status":
+                self.ultra_status_plot()
+            case "ultra hv":
+                self.ultra_hv_plot()
+            case "ultra general rates 1":
+                self.ultra_general_rates_1_plot()
+            case "ultra general rates 2":
+                self.ultra_general_rates_2_plot()
 
     def ultra_status_plot(self) -> None:
         """Generate Ultra status plot."""
@@ -471,32 +471,42 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
         if self.data_set is None:
             raise ValueError("Must load in a dataset.")
 
-            # Time data
-            x_values = self.data_set["epoch"].values
-            x_values_dt = convert_j2000_to_utc(x_values)
+        # Time data
+        x_values = self.data_set["epoch"].values
+        x_values_dt = convert_j2000_to_utc(x_values)
 
-            # Get count rate data
-            sw_rate = self.data_set["swp_pcem_rate"]
-            sw_total_counts = sw_rate.sum(dim="energy_label")
-            pui_rate = self.data_set["swp_scem_rate"]
-            pui_total_counts = pui_rate.sum(dim="energy_label")
+        # Get count rate data
+        sw_rate = self.data_set["swp_pcem_rate"]
+        sw_rate_single = sw_rate.isel(energy=0)
+        # sw_total_counts = sw_rate.sum(dim="energy")
+        pui_rate = self.data_set["swp_scem_rate"]
+        pui_rate_single = pui_rate.isel(energy=0)
+        # pui_total_counts = pui_rate.sum(dim="energy")
+        coin_rate = self.data_set["swp_coin_rate"]
+        coin_rate_single = coin_rate.isel(energy=0)
 
-            fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True, sharey=True)
+        fig, axes = plt.subplots(3, 1, sharex=True, sharey=True)
 
-            # Plot SW
-            axes[0].plot(x_values_dt, sw_total_counts, color="dodgerblue", marker="o")
-            axes[0].set_title("SW PCEM Total Count Rate")
-            axes[0].set_ylabel("Counts")
+        # Plot SW
+        axes[0].plot(x_values_dt, sw_rate_single, color="blue")
+        axes[0].set_title("SW PCEM Total Count Rate")
+        axes[0].set_ylabel("Counts")
 
-            # Plot PUI
-            axes[1].plot(x_values_dt, pui_total_counts, color="tomato", marker="o")
-            axes[1].set_title("PUI SCEM Total Count Rate")
-            axes[1].set_xlabel("Time (UTC)")
-            axes[1].set_ylabel("Counts")
+        # Plot PUI
+        axes[1].plot(x_values_dt, pui_rate_single, color="red")
+        axes[1].set_title("PUI SCEM Total Count Rate")
+        axes[1].set_xlabel("Time (UTC)")
+        axes[1].set_ylabel("Counts")
 
-            # Improve layout
-            plt.tight_layout()
-            plt.show()
+        # Plot Coin
+        axes[2].plot(x_values_dt, coin_rate_single, color="red")
+        axes[2].set_title("Coin Count Rate")
+        axes[2].set_xlabel("Time (UTC)")
+        axes[2].set_ylabel("Counts")
+
+        # Improve layout
+        plt.tight_layout()
+        plt.show()
 
     def swapi_absolute_detection_efficiency(self) -> None:
         """Generate detection graph."""
