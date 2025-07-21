@@ -405,12 +405,77 @@ class UltraQuicklookGenerator(QuicklookGenerator):
         raise NotImplementedError
 
 
+class HiQuicklookGenerator(QuicklookGenerator):
+    """HI subclass for ULTRA quicklook plots."""
+
+    def two_dimensional_plot(self, variable: str = "") -> None:
+        """
+        Lead to correct function that will generate the desired quicklook plot.
+
+        Parameters
+        ----------
+        variable : str
+            Variable to specify which quicklook plot to generate.
+        """
+        match variable:
+            case "histogram":
+                self.hi_histogram_plot()
+            case "de histogram":
+                self.hi_de_histogram_plot()
+            case "de tof plots":
+                self.hi_de_tof_plot()
+
+    def hi_histogram_plot(self) -> None:
+        """Generate HI histogram plot."""
+        if self.data_set is None:
+            raise RuntimeError("No data_set loaded.")
+
+        # Histogram intensity
+        hist_intensity = self.data_set["c1c2_qualified"]  # shape: (epoch, angle)
+
+        # Plot as heatmap
+        plt.figure(figsize=(12, 6))
+        im = plt.imshow(
+            hist_intensity.T,  # Transpose so angle is on y-axis
+            aspect="auto",
+            origin="lower",
+            interpolation="none",
+            extent=[
+                self.data_set.epoch.values[0],
+                self.data_set.epoch.values[-1],
+                self.data_set.angle.values[0],
+                self.data_set.angle.values[-1],
+            ],
+        )
+        plt.colorbar(im, label="c1c2_qualified")
+        plt.xlabel("Epoch")
+        plt.ylabel("Angle")
+        plt.title("Histogram of c1c2_qualified vs Time and Angle")
+        plt.tight_layout()
+        plt.show()
+
+    def hi_de_histogram_plot(self) -> None:
+        """Generate HI de histogram plot."""
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
+        raise NotImplementedError
+
+    def hi_de_tof_plot(self) -> None:
+        """Generate HI DE TOF plot."""
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
+        raise NotImplementedError
+
+
 class QuicklookGeneratorType(Enum):
     """Map instrument to correct dataclass."""
 
     MAG = MagQuicklookGenerator
     IDEX = IdexQuicklookGenerator
     ULTRA = UltraQuicklookGenerator
+    HI = HiQuicklookGenerator
 
 
 def get_instrument_quicklook(filename: str) -> QuicklookGenerator:
