@@ -425,34 +425,47 @@ class HiQuicklookGenerator(QuicklookGenerator):
             case "de tof plots":
                 self.hi_de_tof_plot()
 
-    def hi_histogram_plot(self) -> None:
-        """Generate HI histogram plot."""
+    def hi_histogram_plot(self, histogram_types: list = ["ac1_qualified"]) -> None:
+        """
+        Lead to correct function that will generate the desired quicklook plot.
+
+        Parameters
+        ----------
+        histogram_types : str
+            Values to be summed.
+        """
         if self.data_set is None:
             raise RuntimeError("No data_set loaded.")
 
-        # Histogram intensity
-        hist_intensity = self.data_set["c1c2_qualified"]  # shape: (epoch, angle)
+        # Narrow down dataset to only esa_step == 1
+        filtered_ds = self.data_set.where(self.data_set["esa_step"] == 6, drop=True)
+        ac1 = filtered_ds["ac1_qualified"]
 
-        # Plot as heatmap
-        plt.figure(figsize=(12, 6))
-        im = plt.imshow(
-            hist_intensity.T,  # Transpose so angle is on y-axis
-            aspect="auto",
-            origin="lower",
-            interpolation="none",
-            extent=[
-                self.data_set.epoch.values[0],
-                self.data_set.epoch.values[-1],
-                self.data_set.angle.values[0],
-                self.data_set.angle.values[-1],
-            ],
+        # Defining x-axis
+        # x_values = self.data_set["epoch"].values
+        # x_values_dt = convert_j2000_to_utc(x_values)
+
+        # Create the plot
+        plt.figure(figsize=(10, 5))
+        pcm = plt.pcolormesh(
+            ac1["epoch"],  # x-axis
+            ac1["angle"],  # y-axis
+            ac1.transpose("angle", "epoch"),  # 2D data with shape (angle, epoch)
+            shading="auto",
+            cmap="viridis",
         )
-        plt.colorbar(im, label="c1c2_qualified")
+
+        plt.colorbar(pcm, label="ac1_qualified count")
         plt.xlabel("Epoch")
         plt.ylabel("Angle")
-        plt.title("Histogram of c1c2_qualified vs Time and Angle")
+        plt.title("2D Histogram of ac1_qualified (ESA Step 1)")
+
         plt.tight_layout()
         plt.show()
+
+        # total_counts = sum(self.data_set[var] for var in histogram_types)   # (epoch, angle)
+        # print(total_counts.coords["angle"].values)
+        # esa_row = self.data_set["esa_step"].values
 
     def hi_de_histogram_plot(self) -> None:
         """Generate HI de histogram plot."""
