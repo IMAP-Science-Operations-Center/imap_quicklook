@@ -137,25 +137,25 @@ class MagQuicklookGenerator(QuicklookGenerator):
             raise ValueError("Must load in a dataset.")
 
         num_lines = 3
-        x_values = self.data_set["epoch"].values
+        epoch = self.data_set["epoch"].values
         vector_data = self.data_set["vectors"]
 
-        x_values_dt = convert_j2000_to_utc(x_values)
+        epoch_dt = convert_j2000_to_utc(epoch)
 
         fig, axes = plt.subplots(
             nrows=num_lines, ncols=1, figsize=(10, 3 * num_lines), sharex=True
         )
 
         x_comp = vector_data.isel({"direction": 0})
-        axes[0].plot(x_values_dt, x_comp)
+        axes[0].plot(epoch_dt, x_comp)
         axes[0].set_ylabel(f"Vector {0}\n (x component)")
 
         y_comp = vector_data.isel({"direction": 1})
-        axes[1].plot(x_values_dt, y_comp)
+        axes[1].plot(epoch_dt, y_comp)
         axes[1].set_ylabel(f"Vector {1}\n (y component)")
 
         z_comp = vector_data.isel({"direction": 2})
-        axes[2].plot(x_values_dt, z_comp)
+        axes[2].plot(epoch_dt, z_comp)
         axes[2].set_ylabel(f"Vector {2}\n (z component)")
 
         axes[-1].set_xlabel("Time (ns)")
@@ -405,12 +405,163 @@ class UltraQuicklookGenerator(QuicklookGenerator):
         raise NotImplementedError
 
 
+class SwapiQuicklookGenerator(QuicklookGenerator):
+    """SWAPI subclass for SWAPI quicklook plots."""
+
+    def two_dimensional_plot(self, variable: str = "") -> None:
+        """
+        Lead to correct function that will generate the desired quicklook plot.
+
+        Parameters
+        ----------
+        variable : str
+            Variable to specify which quicklook plot to generate.
+        """
+        match variable:
+            case "count rates":
+                self.swapi_count_rates()
+            case "absolute detection efficiency":
+                self.swapi_absolute_detection_efficiency()
+            case "count line":
+                self.swapi_counts()
+
+    def swapi_count_rates(self) -> None:
+        """Generate SWAPI plot of SW and PUI count rates per charge over time."""
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
+        # Time data
+        epoch = self.data_set["epoch"].values
+        epoch_dt = convert_j2000_to_utc(epoch)
+
+        # Energy values from strings to numbers
+        energy_labels = self.data_set["energy_label"].values.astype(float)
+
+        # Get count rate data
+        # pcem and scem can be used to calculate solar wind or pick up ion rates respectively
+        pcem_rate = self.data_set["swp_pcem_rate"].values  # Primary
+        scem_rates = self.data_set["swp_scem_rate"].values  # Secondary
+        coin_rates = self.data_set["swp_scem_rate"].values  # Coincidence
+
+        fig, axes = plt.subplots(3, 1, figsize=(14, 10), sharex=True, sharey=True)
+
+        # Plot primary
+        primary = axes[0].pcolormesh(
+            epoch_dt, energy_labels, pcem_rate.T, shading="auto", cmap="viridis"
+        )
+        axes[0].set_title("SWAPI Primary Count Rate (PCEM)")
+        axes[0].set_ylabel("Energy per charge (eV/q)")
+        fig.colorbar(primary, ax=axes[0], label="Counts")
+
+        # Plot secondary
+        secondary = axes[1].pcolormesh(
+            epoch_dt, energy_labels, scem_rates.T, shading="auto", cmap="viridis"
+        )
+        axes[1].set_title("SWAPI Secondary Count Rate (SCEM)")
+        axes[1].set_ylabel("Energy per charge (eV/q)")
+        fig.colorbar(secondary, ax=axes[1], label="Counts")
+
+        # Plot coincidence
+        coincidence = axes[2].pcolormesh(
+            epoch_dt, energy_labels, coin_rates.T, shading="auto", cmap="viridis"
+        )
+        axes[2].set_title("Coincidence Count Rate")
+        axes[2].set_xlabel("Time (UTC)")
+        axes[2].set_ylabel("Energy per charge (eV/q)")
+        fig.colorbar(coincidence, ax=axes[2], label="Counts")
+
+        plt.tight_layout()
+        plt.show()
+
+    def swapi_absolute_detection_efficiency(self) -> None:
+        """
+        Graph SWAPI absolute detection efficiency.
+
+        Notes:
+        --------
+            Calculate using coincidence^2 / (primary*secondary).
+        """
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
+        # Time data
+        epoch = self.data_set["epoch"].values
+        epoch_dt = convert_j2000_to_utc(epoch)
+
+        # Get count rate data
+        # .sum(dim="energy") gives a total count for all energies at a particular time
+        pcem_rate = self.data_set["swp_pcem_rate"]
+        pcem_rate_sum = pcem_rate.sum(dim="energy")
+
+        scem_rate = self.data_set["swp_scem_rate"]
+        scem_rate_sum = scem_rate.sum(dim="energy")
+
+        coin_rate = self.data_set["swp_coin_rate"]
+        coin_rate_sum = coin_rate.sum(dim="energy")
+
+        denom = pcem_rate_sum * scem_rate_sum
+        detection_efficiency = (coin_rate_sum**2) / (denom)
+        detection_efficiency = detection_efficiency.where(denom != 0)
+
+        plt.plot(epoch_dt, detection_efficiency)
+        plt.title("SWAPI Absolute Detection Efficiency")
+        plt.xlabel("Time (UTC)")
+        plt.ylabel("Coincidence² / (Primary × Secondary)")
+        plt.tight_layout()
+        plt.show()
+
+    def swapi_counts(self) -> None:
+        """Generate SWAPI count rates line plot."""
+
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
+        # Time data
+        epoch = self.data_set["epoch"].values
+        epoch_dt = convert_j2000_to_utc(epoch)
+
+        # Get count data
+        # .isel(energy=0) selects a specific energy bin to count for
+        pcem_counts = self.data_set["swp_pcem_counts"]
+        pcem_counts_single = pcem_counts.isel(energy=0)
+
+        scem_counts = self.data_set["swp_scem_counts"]
+        scem_counts_single = scem_counts.isel(energy=0)
+
+        coin_counts = self.data_set["swp_coin_counts"]
+        coin_counts_single = coin_counts.isel(energy=0)
+
+        fig, axes = plt.subplots(3, 1, sharex=True, sharey=True)
+
+        # Plot SW
+        axes[0].plot(epoch_dt, pcem_counts_single, color="blue")
+        axes[0].set_title("SWAPI PCEM Total Counts")
+        axes[0].set_ylabel("Counts")
+
+        # Plot PUI
+        axes[1].plot(epoch_dt, scem_counts_single, color="red")
+        axes[1].set_title("PUI SCEM Total Count Rate")
+        axes[1].set_xlabel("Time (UTC)")
+        axes[1].set_ylabel("Counts")
+
+        # Plot Coin
+        axes[2].plot(epoch_dt, coin_counts_single, color="green")
+        axes[2].set_title("Coin Count Rate")
+        axes[2].set_xlabel("Time (UTC)")
+        axes[2].set_ylabel("Counts")
+
+        # Improve layout
+        plt.tight_layout()
+        plt.show()
+
+
 class QuicklookGeneratorType(Enum):
     """Map instrument to correct dataclass."""
 
     MAG = MagQuicklookGenerator
     IDEX = IdexQuicklookGenerator
     ULTRA = UltraQuicklookGenerator
+    SWAPI = SwapiQuicklookGenerator
 
 
 def get_instrument_quicklook(filename: str) -> QuicklookGenerator:
