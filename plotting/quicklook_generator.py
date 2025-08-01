@@ -423,10 +423,10 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
             case "absolute detection efficiency":
                 self.swapi_absolute_detection_efficiency()
             case "count line":
-                self.swapi_count_line()
+                self.swapi_counts()
 
     def swapi_count_rates(self) -> None:
-        """Generate SWAPI count rates plot."""
+        """Generate SWAPI plot of SW and PUI count rates per charge over time."""
         if self.data_set is None:
             raise ValueError("Must load in a dataset.")
 
@@ -438,27 +438,37 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
         energy_labels = self.data_set["energy_label"].values.astype(float)
 
         # Get count rate data
-        swp_rates = self.data_set["swp_pcem_rate"].values
-        pui_rates = self.data_set["swp_scem_rate"].values
+        # pcem and scem can be used to calculate solar wind or pick up ion rates respectively
+        pcem_rate = self.data_set["swp_pcem_rate"].values  # Primary
+        scem_rates = self.data_set["swp_scem_rate"].values  # Secondary
+        coin_rates = self.data_set["swp_scem_rate"].values  # Coincidence
 
-        fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True, sharey=True)
+        fig, axes = plt.subplots(3, 1, figsize=(14, 10), sharex=True, sharey=True)
 
-        # Plot SW
-        pcm1 = axes[0].pcolormesh(
-            epoch_dt, energy_labels, swp_rates.T, shading="auto", cmap="viridis"
+        # Plot primary
+        primary = axes[0].pcolormesh(
+            epoch_dt, energy_labels, pcem_rate.T, shading="auto", cmap="viridis"
         )
-        axes[0].set_title("SWP PCEM Count Rate")
+        axes[0].set_title("SWAPI Primary Count Rate (PCEM)")
         axes[0].set_ylabel("Energy per charge (eV/q)")
-        fig.colorbar(pcm1, ax=axes[0], label="Counts")
+        fig.colorbar(primary, ax=axes[0], label="Counts")
 
-        # Plot PUI
-        pcm2 = axes[1].pcolormesh(
-            epoch_dt, energy_labels, pui_rates.T, shading="auto", cmap="viridis"
+        # Plot secondary
+        secondary = axes[1].pcolormesh(
+            epoch_dt, energy_labels, scem_rates.T, shading="auto", cmap="viridis"
         )
-        axes[1].set_title("SWP SCEM Count Rate")
-        axes[1].set_xlabel("Time (UTC)")
+        axes[1].set_title("SWAPI Secondary Count Rate (SCEM)")
         axes[1].set_ylabel("Energy per charge (eV/q)")
-        fig.colorbar(pcm2, ax=axes[1], label="Counts")
+        fig.colorbar(secondary, ax=axes[1], label="Counts")
+
+        # Plot coincidence
+        coincidence = axes[2].pcolormesh(
+            epoch_dt, energy_labels, coin_rates.T, shading="auto", cmap="viridis"
+        )
+        axes[2].set_title("Coincidence Count Rate")
+        axes[2].set_xlabel("Time (UTC)")
+        axes[2].set_ylabel("Energy per charge (eV/q)")
+        fig.colorbar(coincidence, ax=axes[2], label="Counts")
 
         plt.tight_layout()
         plt.show()
@@ -496,11 +506,10 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
         plt.title("SWAPI Absolute Detection Efficiency")
         plt.xlabel("Time (UTC)")
         plt.ylabel("Coincidence² / (Primary × Secondary)")
-        plt.grid(True)
         plt.tight_layout()
         plt.show()
 
-    def swapi_count_line(self) -> None:
+    def swapi_counts(self) -> None:
         """Generate SWAPI count rates line plot."""
 
         if self.data_set is None:
@@ -512,13 +521,13 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
 
         # Get count data
         # TODO: Ensure energy=0 is correct
-        pcem_counts = self.data_set["swp_pcem_rate"]
+        pcem_counts = self.data_set["swp_pcem_counts"]
         pcem_counts_single = pcem_counts.isel(energy=0)
-        # sw_total_counts = pcem_counts.sum(dim="energy")
-        scem_counts = self.data_set["swp_scem_rate"]
+
+        scem_counts = self.data_set["swp_scem_counts"]
         scem_counts_single = scem_counts.isel(energy=0)
-        # pui_total_counts = scem_counts.sum(dim="energy")
-        coin_counts = self.data_set["swp_coin_rate"]
+
+        coin_counts = self.data_set["swp_coin_counts"]
         coin_counts_single = coin_counts.isel(energy=0)
 
         fig, axes = plt.subplots(3, 1, sharex=True, sharey=True)
