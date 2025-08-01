@@ -489,6 +489,7 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
         epoch_dt = convert_j2000_to_utc(epoch)
 
         # Get count rate data
+        # .sum(dim="energy") gives a total count for all energies at a particular time
         pcem_rate = self.data_set["swp_pcem_rate"]
         pcem_rate_sum = pcem_rate.sum(dim="energy")
 
@@ -520,7 +521,7 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
         epoch_dt = convert_j2000_to_utc(epoch)
 
         # Get count data
-        # TODO: Ensure energy=0 is correct
+        # .isel(energy=0) selects a specific energy bin to count for
         pcem_counts = self.data_set["swp_pcem_counts"]
         pcem_counts_single = pcem_counts.isel(energy=0)
 
