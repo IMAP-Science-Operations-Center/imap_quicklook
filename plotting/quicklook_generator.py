@@ -427,7 +427,7 @@ class HiQuicklookGenerator(QuicklookGenerator):
 
     def hi_histogram_plot(self, histogram_types: list = ["ac1_qualified"]) -> None:
         """
-        Lead to correct function that will generate the desired quicklook plot.
+        Histogram plot with different angle rows.
 
         Parameters
         ----------
@@ -438,7 +438,7 @@ class HiQuicklookGenerator(QuicklookGenerator):
             raise RuntimeError("No data_set loaded.")
 
         # Narrow down dataset to only esa_step == 1
-        filtered_ds = self.data_set.where(self.data_set["esa_step"] == 6, drop=True)
+        filtered_ds = self.data_set.where(self.data_set["esa_step"] == 1, drop=True)
         ac1 = filtered_ds["ac1_qualified"]
 
         # Defining x-axis
