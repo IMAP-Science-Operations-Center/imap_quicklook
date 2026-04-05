@@ -1,11 +1,12 @@
-"""Download one CDF file per IMAP instrument for a given date.
+"""
+Download one CDF file per IMAP instrument for a given date.
 
 Files are saved under plotting/data/ so that the existing
 ``dataset_into_xarray`` loader in plotting/cdf/cdf_utils.py can find them
 without any path changes.
 
-Usage
------
+Examples
+--------
 # Download data for today (default)
 python download_data.py
 
@@ -63,7 +64,8 @@ DEFAULT_DATA_DIR = Path(__file__).parent / "plotting" / "data"
 
 
 def parse_data_levels(values: list[str]) -> tuple[str | None, dict[str, str]]:
-    """Parse ``--data-level`` values into a global default and per-instrument overrides.
+    """
+    Parse ``--data-level`` values into a global default and per-instrument overrides.
 
     Each value is either a plain level (``"l1a"``) treated as the global
     default, or an ``instrument:level`` pair (``"mag:l1a"``) treated as an
@@ -99,7 +101,8 @@ def download_instrument_file(
     target_date: str,
     data_level: str | None = None,
 ) -> Path | None:
-    """Download one CDF file for a given instrument and date.
+    """
+    Download one CDF file for a given instrument and date.
 
     Tries data levels from highest to lowest (l2 → l0) unless a specific
     level is requested.
@@ -197,9 +200,7 @@ def main() -> None:
     data_dir.mkdir(parents=True, exist_ok=True)
     imap_data_access.config["DATA_DIR"] = data_dir
 
-    logger.info(
-        "Downloading data for %s → %s", args.date, data_dir
-    )
+    logger.info("Downloading data for %s → %s", args.date, data_dir)
 
     global_level, per_instrument_levels = parse_data_levels(args.data_level)
 
