@@ -132,35 +132,22 @@ class MagQuicklookGenerator(QuicklookGenerator):
                 self.gse_comp_plot()
 
     def vector_component_plot(self) -> None:
-        """Create xyz component quicklook for mag instrument."""
+        """Create xyz component quicklook for mag instrument in sensor coordinates."""
         if self.data_set is None:
             raise ValueError("Must load in a dataset.")
 
-        num_lines = 3
-        epoch = self.data_set["epoch"].values
+        epoch_dt = convert_j2000_to_utc(self.data_set["epoch"].values)
         vector_data = self.data_set["vectors"]
 
-        epoch_dt = convert_j2000_to_utc(epoch)
+        fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(10, 9), sharex=True)
 
-        fig, axes = plt.subplots(
-            nrows=num_lines, ncols=1, figsize=(10, 3 * num_lines), sharex=True
-        )
+        for i, (ax, label) in enumerate(zip(axes, ["X", "Y", "Z"])):
+            ax.plot(epoch_dt, vector_data.isel(direction=i))
+            ax.set_ylabel(f"B_{label} [nT]")
 
-        x_comp = vector_data.isel({"direction": 0})
-        axes[0].plot(epoch_dt, x_comp)
-        axes[0].set_ylabel(f"Vector {0}\n (x component)")
-
-        y_comp = vector_data.isel({"direction": 1})
-        axes[1].plot(epoch_dt, y_comp)
-        axes[1].set_ylabel(f"Vector {1}\n (y component)")
-
-        z_comp = vector_data.isel({"direction": 2})
-        axes[2].plot(epoch_dt, z_comp)
-        axes[2].set_ylabel(f"Vector {2}\n (z component)")
-
-        axes[-1].set_xlabel("Time (ns)")
-        fig.suptitle("XYZ Component Vectors -- Magnetometer (nT)")
-        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        axes[-1].set_xlabel("Time (UTC)")
+        fig.suptitle("MAG Sensor Coordinates (X, Y, Z) [nT]")
+        plt.tight_layout()
         plt.show()
 
     def rtn_comp_plot(self) -> None:
@@ -168,8 +155,27 @@ class MagQuicklookGenerator(QuicklookGenerator):
         raise NotImplementedError
 
     def gse_comp_plot(self) -> None:
-        """Create gse component quicklook for mag instrument."""
-        raise NotImplementedError
+        """Create GSE component + magnitude quicklook for mag instrument."""
+        if self.data_set is None:
+            raise ValueError("Must load in a dataset.")
+
+        epoch_dt = convert_j2000_to_utc(self.data_set["epoch"].values)
+        b_gse = self.data_set["b_gse"]
+        magnitude = self.data_set["magnitude"].values
+
+        fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(10, 12), sharex=True)
+
+        for i, (ax, label) in enumerate(zip(axes[:3], ["X", "Y", "Z"])):
+            ax.plot(epoch_dt, b_gse.isel(direction=i))
+            ax.set_ylabel(f"B_{label} [nT]")
+
+        axes[3].plot(epoch_dt, magnitude)
+        axes[3].set_ylabel("|B| [nT]")
+        axes[3].set_xlabel("Time (UTC)")
+
+        fig.suptitle("MAG GSE Coordinates (X, Y, Z) + Magnitude [nT]")
+        plt.tight_layout()
+        plt.show()
 
 
 class IdexQuicklookGenerator(QuicklookGenerator):
@@ -479,9 +485,9 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
         """
         Graph SWAPI absolute detection efficiency.
 
-        Notes:
-        --------
-            Calculate using coincidence^2 / (primary*secondary).
+        Notes
+        -----
+        Calculate using coincidence^2 / (primary*secondary).
         """
         if self.data_set is None:
             raise ValueError("Must load in a dataset.")
@@ -513,7 +519,8 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
         plt.show()
 
     def swapi_1d_energy_distribution(self) -> None:
-        """Generate SWAPI 1D energy distribution plot.
+        """
+        Generate SWAPI 1D energy distribution plot.
 
         Averages the coincidence count rate into 10-minute bins (starting from
         the first timestamp) and plots mean vs ESA energy for each interval.
@@ -569,7 +576,12 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
         ax.set_xlabel("ESA Energy (eV/q)")
         ax.set_ylabel("COIN Rate (counts/s)")
         ax.set_title("SWAPI 1D Energy Distribution — 10-min averages (coarse steps)")
-        ax.legend(title="Interval start (UTC)", bbox_to_anchor=(1.01, 1), loc="upper left", borderaxespad=0)
+        ax.legend(
+            title="Interval start (UTC)",
+            bbox_to_anchor=(1.01, 1),
+            loc="upper left",
+            borderaxespad=0,
+        )
         plt.tight_layout()
         plt.show()
 
