@@ -376,38 +376,11 @@ class UltraQuicklookGenerator(QuicklookGenerator):
             Variable to specify which quicklook plot to generate.
         """
         match variable:
-            case "ultra status":
-                self.ultra_status_plot()
-            case "ultra hv":
-                self.ultra_hv_plot()
-            case "ultra general rates 1":
-                self.ultra_general_rates_1_plot()
-            case "ultra general rates 2":
-                self.ultra_general_rates_2_plot()
+            case "raw image events":
+                self.raw_image_events()
 
-    def ultra_status_plot(self) -> None:
+    def raw_image_events(self) -> None:
         """Generate Ultra status plot."""
-        raise NotImplementedError
-
-    def ultra_hv_plot(self) -> None:
-        """Generate Ultra hv plot."""
-        if self.data_set is None:
-            raise ValueError("Must load in a dataset.")
-
-        raise NotImplementedError
-
-    def ultra_general_rates_1_plot(self) -> None:
-        """Generate Ultra general rates 1 plot."""
-        if self.data_set is None:
-            raise ValueError("Must load in a dataset.")
-
-        raise NotImplementedError
-
-    def ultra_general_rates_2_plot(self) -> None:
-        """Generate Ultra general rates 2 plot."""
-        if self.data_set is None:
-            raise ValueError("Must load in a dataset.")
-
         raise NotImplementedError
 
 
@@ -621,6 +594,132 @@ class SwapiQuicklookGenerator(QuicklookGenerator):
         plt.show()
 
 
+class HiQuicklookGenerator(QuicklookGenerator):
+    """Hi subclass for MAG quicklook plots."""
+
+    def two_dimensional_plot(self, variable: str = "") -> None:
+        """
+        Lead to correct function that will generate the desired quicklook plot.
+
+        Parameters
+        ----------
+        variable : str
+            Variable to specify which quicklook plot to generate.
+        """
+        match variable:
+            case "HI histogram":
+                self.hi_histogram()
+            case "DE Hisogram":
+                self.de_histogram()
+            case "DE TOF Plots":
+                self.de_tof_plot()
+
+    def hi_histogram(self) -> None:
+        """TODO."""
+        raise NotImplementedError
+
+    def de_histogram(self) -> None:
+        """TODO."""
+        raise NotImplementedError
+
+    def de_tof_plot(self) -> None:
+        """TODO."""
+        raise NotImplementedError
+
+
+class LoQuicklookGenerator(QuicklookGenerator):
+    """Hi subclass for MAG quicklook plots."""
+
+    def two_dimensional_plot(self, variable: str = "") -> None:
+        """
+        Lead to correct function that will generate the desired quicklook plot.
+
+        Parameters
+        ----------
+        variable : str
+            Variable to specify which quicklook plot to generate.
+        """
+        match variable:
+            case "star sensor":
+                self.star_sensor()
+            case "histogram":
+                self.histogram()
+            case "DE histogram":
+                self.de_histogram()
+            case "DE tof":
+                self.de_tof()
+
+    def star_sensor(self) -> None:
+        """TODO."""
+        raise NotImplementedError
+
+    def histogram(self) -> None:
+        """TODO."""
+        raise NotImplementedError
+
+    def de_histogram(self) -> None:
+        """TODO."""
+        raise NotImplementedError
+
+    def de_tof(self) -> None:
+        """TODO."""
+        raise NotImplementedError
+
+
+class GlowsQuicklookGenerator(QuicklookGenerator):
+    """Hi subclass for MAG quicklook plots."""
+
+    def two_dimensional_plot(self, variable: str = "") -> None:
+        """
+        Lead to correct function that will generate the desired quicklook plot.
+
+        Parameters
+        ----------
+        variable : str
+            Variable to specify which quicklook plot to generate.
+        """
+        match variable:
+            case "general quicklook":
+                self.general_quicklook()
+            case "ancillary data":
+                self.ancillary_data()
+
+    def general_quicklook(self) -> None:
+        """TODO."""
+        raise NotImplementedError
+
+    def ancillary_data(self) -> None:
+        """TODO."""
+        raise NotImplementedError
+
+
+class HitQuicklookGenerator(QuicklookGenerator):
+    """Hi subclass for MAG quicklook plots."""
+
+    def two_dimensional_plot(self, variable: str = "") -> None:
+        """
+        Lead to correct function that will generate the desired quicklook plot.
+
+        Parameters
+        ----------
+        variable : str
+            Variable to specify which quicklook plot to generate.
+        """
+        match variable:
+            case "hit ion flux":
+                self.hit_ion_flux()
+            case "electron count rate":
+                self.electron_count_rate()
+
+    def hit_ion_flux(self) -> None:
+        """TODO."""
+        raise NotImplementedError
+
+    def electron_count_rate(self) -> None:
+        """TODO."""
+        raise NotImplementedError
+
+
 class QuicklookGeneratorType(Enum):
     """Map instrument to correct dataclass."""
 
@@ -628,6 +727,10 @@ class QuicklookGeneratorType(Enum):
     IDEX = IdexQuicklookGenerator
     ULTRA = UltraQuicklookGenerator
     SWAPI = SwapiQuicklookGenerator
+    HI = HiQuicklookGenerator
+    LO = LoQuicklookGenerator
+    GLOWS = GlowsQuicklookGenerator
+    HIT = HitQuicklookGenerator
 
 
 def get_instrument_quicklook(filename: str) -> QuicklookGenerator:
