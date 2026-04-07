@@ -20,13 +20,21 @@ DATA_DIR = Path(__file__).parent / "plotting" / "data"
 # Maps data level prefix to the plot types that require it.
 # A prefix of "l1" matches any l1 variant (l1a, l1b, l1c, l1d).
 LEVEL_PLOT_MAP: dict[str, list[str]] = {
-    "l2": ["count rates", "absolute detection efficiency", "1d energy distribution"],
+    "l2": [
+        "count rates",
+        "count rate line",
+        "absolute detection efficiency",
+        "1d energy distribution",
+    ],
     "l1": ["count line"],
 }
 
 
-def find_files_for_level(data_dir: Path, instrument: str, level_prefix: str) -> list[Path]:
-    """Return all CDF files for an instrument whose data level starts with ``level_prefix``.
+def find_files_for_level(
+    data_dir: Path, instrument: str, level_prefix: str
+) -> list[Path]:
+    """
+    Return all CDF files for an instrument whose data level starts with ``level_prefix``.
 
     Parameters
     ----------
@@ -54,11 +62,12 @@ def find_files_for_level(data_dir: Path, instrument: str, level_prefix: str) -> 
 
 
 def generate_swapi_quicklooks(data_dir: Path) -> None:
-    """Generate all implemented SWAPI quicklook plots for every CDF file found.
+    """
+    Generate all implemented SWAPI quicklook plots for every CDF file found.
 
     Plot types are matched to files by data level:
 
-    - l2 files  → count rates, absolute detection efficiency, 1d energy distribution
+    - l2 files  → count rates, count rate line, absolute detection efficiency, 1d energy distribution
     - l1* files → count line
 
     Parameters
@@ -70,10 +79,17 @@ def generate_swapi_quicklooks(data_dir: Path) -> None:
         cdf_files = find_files_for_level(data_dir, "swapi", level_prefix)
 
         if not cdf_files:
-            logger.warning("No SWAPI %s* files found — skipping: %s", level_prefix, plot_types)
+            logger.warning(
+                "No SWAPI %s* files found — skipping: %s", level_prefix, plot_types
+            )
             continue
 
-        logger.info("Found %d SWAPI %s* file(s) for %s:", len(cdf_files), level_prefix, plot_types)
+        logger.info(
+            "Found %d SWAPI %s* file(s) for %s:",
+            len(cdf_files),
+            level_prefix,
+            plot_types,
+        )
         for f in cdf_files:
             logger.info("  %s", f.name)
 

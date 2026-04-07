@@ -1,31 +1,39 @@
-"""Download one CDF file per IMAP instrument for a given date.
+"""
+Download one CDF file per IMAP instrument for a given date.
 
 Files are saved under plotting/data/ so that the existing
 ``dataset_into_xarray`` loader in plotting/cdf/cdf_utils.py can find them
 without any path changes.
 
-Usage
------
-# Download data for today (default)
-python download_data.py
+Examples
+--------
+Download data for today (default)::
 
-# Download data for a specific date
-python download_data.py --date 20251017
+    python download_data.py
 
-# Download only specific instruments
-python download_data.py --date 20251017 --instruments mag swapi idex
+Download data for a specific date::
 
-# Set a global default data level (used for all instruments)
-python download_data.py --date 20251017 --data-level l1a
+    python download_data.py --date 20251017
 
-# Set per-instrument data levels using instrument:level syntax
-python download_data.py --date 20251017 --data-level mag:l1a swapi:l2 idex:l1b
+Download only specific instruments::
 
-# Mix: per-instrument overrides with a global fallback for everything else
-python download_data.py --date 20251017 --data-level l1a mag:l2
+    python download_data.py --date 20251017 --instruments mag swapi idex
 
-# See all options
-python download_data.py --help
+Set a global default data level (used for all instruments)::
+
+    python download_data.py --date 20251017 --data-level l1a
+
+Set per-instrument data levels using instrument:level syntax::
+
+    python download_data.py --date 20251017 --data-level mag:l1a swapi:l2 idex:l1b
+
+Mix per-instrument overrides with a global fallback::
+
+    python download_data.py --date 20251017 --data-level l1a mag:l2
+
+See all options::
+
+    python download_data.py --help
 """
 
 from __future__ import annotations
@@ -62,7 +70,8 @@ DEFAULT_DATA_DIR = Path(__file__).parent / "plotting" / "data"
 
 
 def parse_data_levels(values: list[str]) -> tuple[str | None, dict[str, str]]:
-    """Parse ``--data-level`` values into a global default and per-instrument overrides.
+    """
+    Parse ``--data-level`` values into a global default and per-instrument overrides.
 
     Each value is either a plain level (``"l1a"``) treated as the global
     default, or an ``instrument:level`` pair (``"mag:l1a"``) treated as an
@@ -93,8 +102,11 @@ def parse_data_levels(values: list[str]) -> tuple[str | None, dict[str, str]]:
     return global_default, per_instrument
 
 
-def _move_to_data_dir(staged: Path, instrument: str, data_level: str, data_dir: Path) -> Path:
-    """Move a staged download into the ``data_dir/<instrument>/<data_level>/`` structure.
+def _move_to_data_dir(
+    staged: Path, instrument: str, data_level: str, data_dir: Path
+) -> Path:
+    """
+    Move a staged download into the ``data_dir/<instrument>/<data_level>/`` structure.
 
     Parameters
     ----------
@@ -125,7 +137,8 @@ def download_instrument_file(
     data_level: str | None = None,
     fallback: bool = True,
 ) -> Path | None:
-    """Download one CDF file for a given instrument and date.
+    """
+    Download one CDF file for a given instrument and date.
 
     Tries data levels from highest to lowest (l2 → l0) unless a specific
     level is requested. If no file exists for ``target_date`` and
@@ -170,7 +183,9 @@ def download_instrument_file(
             result = results[0]
             logger.info("Downloading %s", result["file_path"])
             staged = imap_data_access.download(result["file_path"])
-            dest = _move_to_data_dir(staged, result["instrument"], result["data_level"], data_dir)
+            dest = _move_to_data_dir(
+                staged, result["instrument"], result["data_level"], data_dir
+            )
             logger.info("Saved to %s", dest)
             return dest
 
@@ -196,7 +211,9 @@ def download_instrument_file(
             result = results[0]
             logger.info("Most recent %s %s: %s", instrument, level, result["file_path"])
             staged = imap_data_access.download(result["file_path"])
-            dest = _move_to_data_dir(staged, result["instrument"], result["data_level"], data_dir)
+            dest = _move_to_data_dir(
+                staged, result["instrument"], result["data_level"], data_dir
+            )
             logger.info("Saved to %s", dest)
             return dest
 
