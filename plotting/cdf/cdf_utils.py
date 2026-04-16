@@ -88,21 +88,14 @@ def dataset_into_xarray(file_name: str) -> xr.Dataset | None:
     This function only requires the file name, and not the whole path in load_cdf.
     """
     file_name_dict = ScienceFilePath.extract_filename_components(file_name)
-    # print(file_name_dict)
-    year = file_name_dict["start_date"][:4]
-    month = file_name_dict["start_date"][4:6]
 
-    # Define file_path
-    # TODO: FIX THIS TO MAKE DYNAMIC
+    # Define file_path: data/<instrument>/<data_level>/<filename>
     file_path = os.path.join(
         os.path.dirname(__file__),
         "..",
         "data",
-        file_name_dict["mission"],
         file_name_dict["instrument"],
         file_name_dict["data_level"],
-        year,
-        month,
     )
     full_path = os.path.join(file_path, file_name)
     # print('Full Path: ' + full_path)
