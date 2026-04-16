@@ -1,0 +1,13 @@
+# CDF data files - too large for GitHub
+plotting/data/**/*.cdf
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
