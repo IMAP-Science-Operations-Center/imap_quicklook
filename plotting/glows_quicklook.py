@@ -13,7 +13,7 @@ from matplotlib.gridspec import GridSpec
 from plotting.base_quicklook import QuicklookGenerator, convert_j2000_to_utc
 
 
-@dataclass
+@dataclass(init=False)
 class GlowsQuicklookGenerator(QuicklookGenerator):
     """Hi subclass for MAG quicklook plots."""
 

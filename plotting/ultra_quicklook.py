@@ -12,7 +12,7 @@ import xarray as xr
 from plotting.base_quicklook import QuicklookGenerator, convert_j2000_to_utc
 
 
-@dataclass
+@dataclass(init=False)
 class UltraQuicklookGenerator(QuicklookGenerator):
     """ULTRA subclass for ULTRA quicklook plots."""
 
