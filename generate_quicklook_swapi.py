@@ -23,7 +23,6 @@ LEVEL_PLOT_MAP: dict[str, list[str]] = {
     "l2": [
         "count rates",
         "count rate line",
-        "absolute detection efficiency",
         "1d energy distribution",
     ],
     "l1": ["count line"],
@@ -67,7 +66,7 @@ def generate_swapi_quicklooks(data_dir: Path) -> None:
 
     Plot types are matched to files by data level:
 
-    - l2 files  → count rates, count rate line, absolute detection efficiency, 1d energy distribution
+    - l2 files  → count rates, count rate line, 1d energy distribution
     - l1* files → count line
 
     Parameters
