@@ -104,12 +104,12 @@ def generate_glows_quicklooks(data_dir: Path) -> None:
         # Attach matching L2 file if available
         if date_tag in l2_files:
             logger.info("  Loading L2: %s", l2_files[date_tag].name)
-            gen.data_set_l2 = load_cdf(l2_files[date_tag])
+            gen.data_set_l2 = load_cdf(l2_files[date_tag])  # type: ignore[attr-defined]
         else:
             logger.warning(
                 "  No matching L2 file for %s — sky map panel will be empty.", date_tag
             )
-            gen.data_set_l2 = None
+            gen.data_set_l2 = None  # type: ignore[attr-defined]
 
         for plot_type in ("general quicklook", "ancillary data"):
             logger.info("  Generating '%s'", plot_type)

@@ -176,10 +176,10 @@ def generate_ultra_quicklooks(data_dir: Path) -> None:
             aux_file = find_ultra_aux_file(data_dir, date_tag, sensor)
             if aux_file:
                 logger.info("  Loading L1A AUX: %s", aux_file.name)
-                gen.data_set_aux = load_cdf(aux_file)
+                gen.data_set_aux = load_cdf(aux_file)  # type: ignore[attr-defined]
             else:
                 logger.warning("  No L1A AUX file — voltage panel will be empty.")
-                gen.data_set_aux = None
+                gen.data_set_aux = None  # type: ignore[attr-defined]
 
             for plot_type in (
                 "raw image events",

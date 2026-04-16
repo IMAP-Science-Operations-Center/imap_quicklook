@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,7 +10,6 @@ import xarray as xr
 from plotting.base_quicklook import QuicklookGenerator, convert_j2000_to_utc
 
 
-@dataclass(init=False)
 class UltraQuicklookGenerator(QuicklookGenerator):
     """ULTRA subclass for ULTRA quicklook plots."""
 
