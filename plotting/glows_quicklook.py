@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +13,7 @@ from matplotlib.gridspec import GridSpec
 from plotting.base_quicklook import QuicklookGenerator, convert_j2000_to_utc
 
 
+@dataclass
 class GlowsQuicklookGenerator(QuicklookGenerator):
     """Hi subclass for MAG quicklook plots."""
 
