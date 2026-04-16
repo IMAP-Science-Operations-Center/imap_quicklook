@@ -14,6 +14,9 @@ from plotting.base_quicklook import QuicklookGenerator, convert_j2000_to_utc
 class GlowsQuicklookGenerator(QuicklookGenerator):
     """Hi subclass for MAG quicklook plots."""
 
+    data_set_l2: xr.Dataset | None = None
+    data_set_swe: xr.Dataset | None = None
+
     def two_dimensional_plot(self, variable: str = "") -> None:
         """
         Lead to correct function that will generate the desired quicklook plot.

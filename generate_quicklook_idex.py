@@ -19,7 +19,8 @@ DATA_DIR = Path(__file__).parent / "plotting" / "data"
 
 
 def generate_idex_quicklooks(data_dir: Path) -> None:
-    """Generate IDEX quicklook plots for every CDF file found.
+    """
+    Generate IDEX quicklook plots for every CDF file found.
 
     One plot is produced per dust impact event (epoch) in each file.
 

@@ -5,12 +5,15 @@ from __future__ import annotations
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+import xarray as xr
 
 from plotting.base_quicklook import QuicklookGenerator, convert_j2000_to_utc
 
 
 class UltraQuicklookGenerator(QuicklookGenerator):
     """ULTRA subclass for ULTRA quicklook plots."""
+
+    data_set_aux: xr.Dataset | None = None
 
     def two_dimensional_plot(self, variable: str = "") -> None:
         """
