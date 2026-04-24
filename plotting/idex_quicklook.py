@@ -187,6 +187,6 @@ class IdexQuicklookGenerator(QuicklookGenerator):
             family="monospace",
         )
 
-        axes[-1].set_xlabel("Time (μs)")
-        fig.suptitle("IDEX L1A Dust Impact Waveforms")
+        axes[-1].set_xlabel("Time (μs)", fontsize=10)
+        fig.suptitle("IDEX L1A Dust Impact Waveforms", fontsize=12, fontweight="bold")
         plt.show()

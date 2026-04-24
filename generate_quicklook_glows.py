@@ -8,6 +8,7 @@ from pathlib import Path
 
 from plotting.cdf.cdf_utils import load_cdf
 from plotting.quicklook_generator import GlowsQuicklookGenerator
+from plotting.save_utils import capture_plots
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,6 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).parent / "plotting" / "data"
+OUTPUT_DIR = Path(__file__).parent / "output"
 
 _DATE_RE = re.compile(r"_(\d{8}-repoint\d+|\d{8})_")
 
@@ -38,6 +40,29 @@ def _extract_date_tag(path: Path) -> str | None:
     """
     m = _DATE_RE.search(path.name)
     return m.group(1) if m else None
+
+
+def find_ialirt_file(data_dir: Path, date_tag: str) -> Path | None:
+    """
+    Return the matching i-ALiRT CDF file for a given date tag.
+
+    Parameters
+    ----------
+    data_dir : Path
+        Root data directory containing the ``ialirt/`` subdirectory.
+    date_tag : str
+        Date tag to match (e.g. ``"20260309"`` — repoint suffix is ignored).
+
+    Returns
+    -------
+    Path or None
+        Path to the matching i-ALiRT file, or ``None`` if not found.
+    """
+    base_date = date_tag[:8]
+    candidates = sorted(
+        (data_dir / "ialirt").glob(f"imap_ialirt_l1_realtime_{base_date}_*.cdf")
+    )
+    return candidates[-1] if candidates else None
 
 
 def find_glows_files(data_dir: Path, level: str, descriptor: str) -> dict[str, Path]:
@@ -104,16 +129,29 @@ def generate_glows_quicklooks(data_dir: Path) -> None:
         # Attach matching L2 file if available
         if date_tag in l2_files:
             logger.info("  Loading L2: %s", l2_files[date_tag].name)
-            gen.data_set_l2 = load_cdf(l2_files[date_tag])  # type: ignore[attr-defined]
+            gen.data_set_l2 = load_cdf(l2_files[date_tag])
         else:
             logger.warning(
                 "  No matching L2 file for %s — sky map panel will be empty.", date_tag
             )
-            gen.data_set_l2 = None  # type: ignore[attr-defined]
+            gen.data_set_l2 = None
+
+        # Attach matching i-ALiRT file if available (for SWAPI and SWE panels)
+        ialirt_file = find_ialirt_file(data_dir, date_tag)
+        if ialirt_file:
+            logger.info("  Loading i-ALiRT: %s", ialirt_file.name)
+            gen.data_set_ialirt = load_cdf(ialirt_file)
+        else:
+            logger.warning(
+                "  No i-ALiRT file for %s — SWAPI/SWE panels will be empty.", date_tag
+            )
+            gen.data_set_ialirt = None
 
         for plot_type in ("general quicklook", "ancillary data"):
             logger.info("  Generating '%s'", plot_type)
-            gen.two_dimensional_plot(plot_type)
+            stem = f"{l1b_file.stem}_{plot_type.replace(' ', '_')}"
+            with capture_plots(OUTPUT_DIR / "glows", stem):
+                gen.two_dimensional_plot(plot_type)
 
 
 if __name__ == "__main__":

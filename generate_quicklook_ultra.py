@@ -8,6 +8,7 @@ from pathlib import Path
 
 from plotting.cdf.cdf_utils import load_cdf
 from plotting.quicklook_generator import UltraQuicklookGenerator
+from plotting.save_utils import capture_plots
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,6 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).parent / "plotting" / "data"
+OUTPUT_DIR = Path(__file__).parent / "output"
 
 _DATE_RE = re.compile(r"_(\d{8}-repoint\d+|\d{8})_")
 
@@ -176,10 +178,10 @@ def generate_ultra_quicklooks(data_dir: Path) -> None:
             aux_file = find_ultra_aux_file(data_dir, date_tag, sensor)
             if aux_file:
                 logger.info("  Loading L1A AUX: %s", aux_file.name)
-                gen.data_set_aux = load_cdf(aux_file)  # type: ignore[attr-defined]
+                gen.data_set_aux = load_cdf(aux_file)
             else:
                 logger.warning("  No L1A AUX file — voltage panel will be empty.")
-                gen.data_set_aux = None  # type: ignore[attr-defined]
+                gen.data_set_aux = None
 
             for plot_type in (
                 "raw image events",
@@ -187,7 +189,9 @@ def generate_ultra_quicklooks(data_dir: Path) -> None:
                 "tof spectrum",
             ):
                 logger.info("  Generating '%s'", plot_type)
-                gen.two_dimensional_plot(plot_type)
+                stem = f"{de_file.stem}_{plot_type.replace(' ', '_')}"
+                with capture_plots(OUTPUT_DIR / "ultra", stem):
+                    gen.two_dimensional_plot(plot_type)
 
     # ── Priority event plots ───────────────────────────────────────────
     for priority, descriptor in [
@@ -210,7 +214,9 @@ def generate_ultra_quicklooks(data_dir: Path) -> None:
             gen.instrument = "ultra"
 
             logger.info("  Generating 'priority %d events'", priority)
-            gen.two_dimensional_plot(f"priority {priority} events")
+            stem = f"{pri_file.stem}_priority_{priority}_events"
+            with capture_plots(OUTPUT_DIR / "ultra", stem):
+                gen.two_dimensional_plot(f"priority {priority} events")
 
 
 if __name__ == "__main__":

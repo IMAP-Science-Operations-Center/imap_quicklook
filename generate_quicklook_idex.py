@@ -7,6 +7,7 @@ from pathlib import Path
 
 from plotting.cdf.cdf_utils import load_cdf
 from plotting.quicklook_generator import IdexQuicklookGenerator
+from plotting.save_utils import capture_plots
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,6 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).parent / "plotting" / "data"
+OUTPUT_DIR = Path(__file__).parent / "output"
 
 
 def generate_idex_quicklooks(data_dir: Path) -> None:
@@ -52,9 +54,10 @@ def generate_idex_quicklooks(data_dir: Path) -> None:
         gen.data_set = dataset
         gen.instrument = "idex"
 
-        for time_index in range(num_events):
-            logger.info("  Generating waveform plot for event %d", time_index)
-            gen.idex_quicklook(time_index=time_index)
+        # Only save event 0 as an example.
+        logger.info("  Generating waveform plot for event 0")
+        with capture_plots(OUTPUT_DIR / "idex", f"{cdf_file.stem}_event_0"):
+            gen.idex_quicklook(time_index=0)
 
 
 if __name__ == "__main__":

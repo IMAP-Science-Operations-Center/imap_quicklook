@@ -10,7 +10,7 @@ from plotting.base_quicklook import QuicklookGenerator, convert_j2000_to_utc
 
 
 class LoQuicklookGenerator(QuicklookGenerator):
-    """Hi subclass for MAG quicklook plots."""
+    """Lo subclass for Lo quicklook plots."""
 
     def two_dimensional_plot(self, variable: str = "") -> None:
         """
@@ -38,8 +38,7 @@ class LoQuicklookGenerator(QuicklookGenerator):
         Produces a two-panel figure:
 
         - **Top:** 2D pcolormesh with spin number on X, spin phase (°) on Y,
-          and star sensor voltage (V) as color.  Black background; black →
-          rainbow colormap (0 – 2.5 V).  Unscanned phase bins are masked black.
+          and star sensor voltage (V) as color.  White for unscanned bins.
         - **Bottom:** star sensor voltage vs. spin phase averaged over all
           spins (blue line).  The simulated star sensor curve (green) requires
           SPICE attitude data not present in the L1A file and is omitted here.
@@ -55,79 +54,62 @@ class LoQuicklookGenerator(QuicklookGenerator):
 
         ds = self.data_set
         raw = ds["data"].values.astype(float)  # shape (n_spins, 720)
-        counts = ds["count"].values  # valid samples per spin packet
+        counts = ds["count"].values
 
-        # Convert DN → Volts (12-bit ADC, 2.5 V full scale)
         DN_TO_VOLTS = 2.5 / 4096
         voltage = raw * DN_TO_VOLTS
 
-        # Mask unscanned phase bins in partial-spin packets
         for i in range(len(counts)):
             if counts[i] < voltage.shape[1]:
                 voltage[i, counts[i] :] = np.nan
 
         n_spins, n_phase = voltage.shape
-        phase_edges = np.arange(n_phase + 1) * 0.5  # 0, 0.5, …, 360.0
+        phase_edges = np.arange(n_phase + 1) * 0.5
         phase_centers = np.arange(n_phase) * 0.5
         spin_edges = np.arange(n_spins + 1)
 
-        # Phase-averaged voltage for the bottom plot
-        phase_means = np.nanmean(voltage, axis=0)  # shape (720,)
+        phase_means = np.nanmean(voltage, axis=0)
 
-        # Black → rainbow colormap (0 V = black, 2.5 V = red)
-        rc = plt.cm.rainbow(np.linspace(0, 1, 255))
-        star_cmap = mcolors.LinearSegmentedColormap.from_list(
-            "black_rainbow", np.vstack([[[0.0, 0.0, 0.0, 1.0]], rc])
-        )
-        star_cmap.set_bad("black")  # NaN (unscanned) → black
+        cmap = plt.get_cmap("plasma").copy()
+        cmap.set_bad("whitesmoke")
         vmax = float(np.nanmax(voltage)) or 2.5
 
-        # --- Figure ---
         fig, (ax_top, ax_bot) = plt.subplots(
             2, 1, figsize=(14, 10), constrained_layout=True
         )
-        fig.patch.set_facecolor("black")
 
-        # Top panel — 2D pcolormesh
-        ax_top.set_facecolor("black")
         im = ax_top.pcolormesh(
             spin_edges,
             phase_edges,
             voltage.T,
-            cmap=star_cmap,
+            cmap=cmap,
             vmin=0,
             vmax=vmax,
             shading="flat",
         )
         cbar = fig.colorbar(im, ax=ax_top, pad=0.01)
-        cbar.set_label("Volts per 0.5° Bin", color="white")
-        cbar.ax.yaxis.set_tick_params(color="white")
-        plt.setp(cbar.ax.yaxis.get_ticklabels(), color="white")
+        cbar.set_label("Volts per 0.5° Bin", fontsize=10)
 
-        ax_top.set_xlabel("Spin Number", color="white")
-        ax_top.set_ylabel("Spin Phase (°)", color="white")
+        ax_top.set_xlabel("Spin Number", fontsize=10)
+        ax_top.set_ylabel("Spin Phase (°)", fontsize=10)
         ax_top.set_ylim(0, 360)
         ax_top.set_yticks(range(0, 361, 45))
-        ax_top.tick_params(colors="white")
         ax_top.set_title(
-            f"Lo L1A Star Sensor — {self.instrument}", color="white", fontsize=11
+            f"Lo L1A Star Sensor — {self.instrument}", fontsize=12, fontweight="bold"
         )
-        for spine in ax_top.spines.values():
-            spine.set_edgecolor("white")
 
-        # Bottom panel — voltage vs spin phase
         ax_bot.plot(
             phase_centers,
             phase_means,
-            color="royalblue",
+            color="steelblue",
             linewidth=1.0,
             label="IMAP-Lo Star Sensor",
         )
         # Simulated curve placeholder — requires SPICE attitude data:
-        # ax_bot.plot(phase_centers, simulated_voltage, color="green",
+        # ax_bot.plot(phase_centers, simulated_voltage, color="seagreen",
         #             linewidth=1.0, label="Simulated (attitude)")
-        ax_bot.set_xlabel("Spinphase (°)")
-        ax_bot.set_ylabel("Star Sensor (V)")
+        ax_bot.set_xlabel("Spinphase (°)", fontsize=10)
+        ax_bot.set_ylabel("Star Sensor (V)", fontsize=10)
         ax_bot.set_xlim(0, 360)
         ax_bot.set_xticks(range(0, 361, 25))
         ax_bot.legend(fontsize=9)
@@ -139,7 +121,7 @@ class LoQuicklookGenerator(QuicklookGenerator):
         """
         Generate Lo L1A histogram quicklook plot.
 
-        Produces three stacked 2D pcolormesh panels (black background):
+        Produces three stacked 2D pcolormesh panels:
 
         - **Total TOF coincidences** — sum of tof0_tof1, tof0_tof2, tof1_tof2,
           and silver across all ESA steps.
@@ -147,19 +129,15 @@ class LoQuicklookGenerator(QuicklookGenerator):
         - **Oxygen counts** — summed over all ESA steps.
 
         X axis: time (UTC).  Y axis: spin phase 0°–360° (6° bins, 60 total).
-        Colormap: black → rainbow, linear scale, per-panel autoscale.
         """
         if self.data_set is None:
             raise ValueError("Must load in a dataset.")
 
         ds = self.data_set
-        fill = 4294967295  # FILLVAL for all count variables
+        fill = 4294967295
 
         epoch_dt = convert_j2000_to_utc(ds["epoch"].values)
-
-        # Spin-phase axis: azimuth_6 has 60 bins at 6° each (uint8 overflows,
-        # so derive degrees directly rather than reading the coordinate values)
-        az_deg_edges = np.arange(61) * 6.0  # 0, 6, 12, …, 360
+        az_deg_edges = np.arange(61) * 6.0
 
         def _sum_over_esa(var_names: list[str]) -> np.ndarray:
             """
@@ -179,7 +157,7 @@ class LoQuicklookGenerator(QuicklookGenerator):
             for name in var_names:
                 arr = ds[name].values.astype(np.float64)
                 arr[arr == fill] = 0.0
-                total += arr.sum(axis=1)  # sum over esa_step dim
+                total += arr.sum(axis=1)
             return total
 
         panels = [
@@ -188,31 +166,18 @@ class LoQuicklookGenerator(QuicklookGenerator):
                 "Total TOF Coincidences\n(tof0_tof1 + tof0_tof2 + tof1_tof2 + silver)",
                 "Counts",
             ),
-            (
-                _sum_over_esa(["hydrogen"]),
-                "Hydrogen",
-                "Counts",
-            ),
-            (
-                _sum_over_esa(["oxygen"]),
-                "Oxygen",
-                "Counts",
-            ),
+            (_sum_over_esa(["hydrogen"]), "Hydrogen", "Counts"),
+            (_sum_over_esa(["oxygen"]), "Oxygen", "Counts"),
         ]
 
-        # Black → rainbow colormap
-        rc = plt.cm.rainbow(np.linspace(0, 1, 255))
-        hist_cmap = mcolors.LinearSegmentedColormap.from_list(
-            "black_rainbow", np.vstack([[[0.0, 0.0, 0.0, 1.0]], rc])
-        )
-        hist_cmap.set_bad("black")
+        cmap = plt.get_cmap("viridis").copy()
+        cmap.set_bad("whitesmoke")
 
-        # Time edges for pcolormesh (add trailing edge from last interval)
         epoch_ns = epoch_dt.astype("datetime64[ns]")
         if len(epoch_ns) > 1:
             dt = (epoch_ns[-1] - epoch_ns[-2]).astype("timedelta64[ns]")
         else:
-            dt = np.timedelta64(int(4.32e11), "ns")  # ~7.2 min default
+            dt = np.timedelta64(int(4.32e11), "ns")
         time_edges = np.append(epoch_ns, epoch_ns[-1] + dt)
 
         fig, axes = plt.subplots(
@@ -222,38 +187,35 @@ class LoQuicklookGenerator(QuicklookGenerator):
             sharex=True,
             constrained_layout=True,
         )
-        fig.patch.set_facecolor("black")
 
         for ax, (counts, label, cbar_label) in zip(axes, panels):
-            ax.set_facecolor("black")
-            vmax = float(counts.max()) or 1.0
+            counts_plot = counts.copy()
+            counts_plot[counts_plot == 0] = np.nan
+            vmax = (
+                float(np.nanmax(counts_plot)) if np.any(~np.isnan(counts_plot)) else 1.0
+            )
 
             im = ax.pcolormesh(
                 time_edges,
                 az_deg_edges,
-                counts.T,
-                cmap=hist_cmap,
-                vmin=0,
+                counts_plot.T,
+                cmap=cmap,
+                vmin=0.5,
                 vmax=vmax,
                 shading="flat",
             )
             cbar = fig.colorbar(im, ax=ax, pad=0.01)
-            cbar.set_label(cbar_label, color="white")
-            plt.setp(cbar.ax.yaxis.get_ticklabels(), color="white")
-            cbar.ax.yaxis.set_tick_params(color="white")
+            cbar.set_label(cbar_label, fontsize=9)
 
-            ax.set_ylabel(label, color="white", fontsize=9)
+            ax.set_ylabel(label, fontsize=9)
             ax.set_ylim(0, 360)
             ax.set_yticks(range(0, 361, 60))
-            ax.tick_params(colors="white")
-            for spine in ax.spines.values():
-                spine.set_edgecolor("white")
 
-        axes[-1].set_xlabel("Time (UTC)", color="white")
+        axes[-1].set_xlabel("Time (UTC)", fontsize=10)
         fig.suptitle(
             f"Lo L1A Histogram — {self.instrument} — summed over ESA steps",
-            color="white",
-            fontsize=11,
+            fontsize=12,
+            fontweight="bold",
         )
         plt.show()
 
@@ -265,28 +227,24 @@ class LoQuicklookGenerator(QuicklookGenerator):
         ``spin_bin`` (0–3599, 0.1°/bin → divide by 60).  The X axis is time,
         derived from the first event epoch in each unique ``spin_cycle``.
 
-        Produces three stacked 2D pcolormesh panels (black background):
+        Produces three stacked 2D pcolormesh panels:
 
         - **Hydrogen (H)**
         - **Oxygen (O)**
         - **Unidentified (U)**
-
-        Colormap: black → rainbow, linear per-panel autoscale.
         """
         if self.data_set is None:
             raise ValueError("Must load in a dataset.")
 
         ds = self.data_set
 
-        spin_bin = ds["spin_bin"].values  # 0–3599
-        spin_cycle = ds["spin_cycle"].values  # spin number (time proxy)
-        species = ds["species"].values  # 'H', 'O', 'U'
-        epoch_ns = ds["epoch"].values  # int64 J2000 ns
+        spin_bin = ds["spin_bin"].values
+        spin_cycle = ds["spin_cycle"].values
+        species = ds["species"].values
+        epoch_ns = ds["epoch"].values
 
-        # Convert 0.1° spin_bin to 6° azimuth bins (0–59)
         az_bin = spin_bin // 60
 
-        # Map spin_cycle → sequential index and representative UTC time
         sc_unique, sc_first_idx = np.unique(spin_cycle, return_index=True)
         n_spins = len(sc_unique)
         sc_to_idx = np.empty(sc_unique[-1] - sc_unique[0] + 1, dtype=np.intp)
@@ -295,13 +253,12 @@ class LoQuicklookGenerator(QuicklookGenerator):
 
         spin_times = convert_j2000_to_utc(epoch_ns[sc_first_idx])
 
-        az_deg_edges = np.arange(61) * 6.0  # 0, 6, …, 360
-        # Time edges for pcolormesh
+        az_deg_edges = np.arange(61) * 6.0
         spin_times_ns = spin_times.astype("datetime64[ns]")
         if n_spins > 1:
             dt = (spin_times_ns[-1] - spin_times_ns[-2]).astype("timedelta64[ns]")
         else:
-            dt = np.timedelta64(int(15e9), "ns")  # 15 s default
+            dt = np.timedelta64(int(15e9), "ns")
         time_edges = np.append(spin_times_ns, spin_times_ns[-1] + dt)
 
         def _build_grid(mask: np.ndarray) -> np.ndarray:
@@ -328,12 +285,8 @@ class LoQuicklookGenerator(QuicklookGenerator):
             (_build_grid(species == "U"), "Unidentified (U)"),
         ]
 
-        # Black → rainbow colormap
-        rc = plt.cm.rainbow(np.linspace(0, 1, 255))
-        de_cmap = mcolors.LinearSegmentedColormap.from_list(
-            "black_rainbow", np.vstack([[[0.0, 0.0, 0.0, 1.0]], rc])
-        )
-        de_cmap.set_bad("black")
+        cmap = plt.get_cmap("viridis").copy()
+        cmap.set_bad("whitesmoke")
 
         fig, axes = plt.subplots(
             len(panels),
@@ -342,38 +295,33 @@ class LoQuicklookGenerator(QuicklookGenerator):
             sharex=True,
             constrained_layout=True,
         )
-        fig.patch.set_facecolor("black")
 
         for ax, (grid, label) in zip(axes, panels):
-            ax.set_facecolor("black")
-            vmax = float(grid.max()) or 1.0
+            grid_plot = grid.copy()
+            grid_plot[grid_plot == 0] = np.nan
+            vmax = float(np.nanmax(grid_plot)) if np.any(~np.isnan(grid_plot)) else 1.0
 
             im = ax.pcolormesh(
                 time_edges,
                 az_deg_edges,
-                grid.T,
-                cmap=de_cmap,
-                vmin=0,
+                grid_plot.T,
+                cmap=cmap,
+                vmin=0.5,
                 vmax=vmax,
                 shading="flat",
             )
             cbar = fig.colorbar(im, ax=ax, pad=0.01)
-            cbar.set_label("Counts", color="white")
-            plt.setp(cbar.ax.yaxis.get_ticklabels(), color="white")
-            cbar.ax.yaxis.set_tick_params(color="white")
+            cbar.set_label("Counts", fontsize=9)
 
-            ax.set_ylabel(label, color="white", fontsize=9)
+            ax.set_ylabel(label, fontsize=9)
             ax.set_ylim(0, 360)
             ax.set_yticks(range(0, 361, 60))
-            ax.tick_params(colors="white")
-            for spine in ax.spines.values():
-                spine.set_edgecolor("white")
 
-        axes[-1].set_xlabel("Time (UTC)", color="white")
+        axes[-1].set_xlabel("Time (UTC)", fontsize=10)
         fig.suptitle(
             f"Lo L1B DE Histogram — {self.instrument} — binned by spin phase",
-            color="white",
-            fontsize=11,
+            fontsize=12,
+            fontweight="bold",
         )
         plt.show()
 
@@ -391,8 +339,6 @@ class LoQuicklookGenerator(QuicklookGenerator):
         Right column — short TOF3 (0.5 ns bins) vs each long TOF (2 ns bins):
           TOF3 vs TOF0 · TOF3 vs TOF1 · TOF3 vs TOF2
 
-        Colormap: log rainbow+white; black for zero-count bins.
-
         **Figure 2 — 1D TOF histograms (4 stacked panels, log Y scale):**
           TOF0 · TOF1 · TOF2 · TOF3, all with 1 ns bins.
         """
@@ -407,21 +353,18 @@ class LoQuicklookGenerator(QuicklookGenerator):
         }
         valid = {k: (v > fill) & (v >= 0) for k, v in tofs.items()}
 
-        # Log rainbow+white colormap; black for empty 2D bins (NaN)
-        rc = plt.cm.rainbow(np.linspace(0, 1, 255))
-        log_cmap = mcolors.LinearSegmentedColormap.from_list(
-            "log_rainbow_white", np.vstack([[[1, 1, 1, 1]], rc])
-        )
-        log_cmap.set_bad("black")
+        # Log rainbow+white colormap for 2D histograms
+        rc = plt.cm.viridis(np.linspace(0, 1, 255))
+        log_cmap = mcolors.LinearSegmentedColormap.from_list("log_viridis", rc)
+        log_cmap.set_bad("whitesmoke")
 
-        long_edges = np.arange(0, 352, 2)  # 2 ns bins, 0–350 ns
-        short_edges = np.arange(0, 20.5, 0.5)  # 0.5 ns bins, 0–20 ns
+        long_edges = np.arange(0, 352, 2)
+        short_edges = np.arange(0, 20.5, 0.5)
 
         # ------------------------------------------------------------------ #
         # Figure 1 — 2D histograms                                            #
         # ------------------------------------------------------------------ #
         layout = [
-            # (x_name, y_name, x_edges, y_edges)
             ("tof0", "tof1", long_edges, long_edges),
             ("tof0", "tof2", long_edges, long_edges),
             ("tof1", "tof2", long_edges, long_edges),
@@ -431,7 +374,6 @@ class LoQuicklookGenerator(QuicklookGenerator):
         ]
 
         fig1, axes1 = plt.subplots(3, 2, figsize=(12, 14), constrained_layout=True)
-        # Reorder: left column = long pairs, right column = TOF3 pairs
         ax_order = [
             axes1[0, 0],
             axes1[1, 0],
@@ -443,7 +385,6 @@ class LoQuicklookGenerator(QuicklookGenerator):
 
         for ax, (xk, yk, xe, ye) in zip(ax_order, layout):
             mask = valid[xk] & valid[yk]
-            ax.set_facecolor("black")
             ax.set_xlabel(f"TOF {xk[-1]} (ns)", fontsize=9)
             ax.set_ylabel(f"TOF {yk[-1]} (ns)", fontsize=9)
             ax.tick_params(labelsize=8)
@@ -459,16 +400,15 @@ class LoQuicklookGenerator(QuicklookGenerator):
             vmax = np.nanmax(h_plot) if np.any(~np.isnan(h_plot)) else 1.0
             norm = mcolors.LogNorm(vmin=0.5, vmax=vmax)
             im = ax.pcolormesh(
-                xe_out,
-                ye_out,
-                h_plot,
-                cmap=log_cmap,
-                norm=norm,
-                shading="flat",
+                xe_out, ye_out, h_plot, cmap=log_cmap, norm=norm, shading="flat"
             )
             fig1.colorbar(im, ax=ax, label="Counts", pad=0.02)
 
-        fig1.suptitle(f"Lo L1B 2D TOF Histograms — {self.instrument}", fontsize=12)
+        fig1.suptitle(
+            f"Lo L1B 2D TOF Histograms — {self.instrument}",
+            fontsize=12,
+            fontweight="bold",
+        )
         plt.show()
 
         # ------------------------------------------------------------------ #
@@ -492,12 +432,18 @@ class LoQuicklookGenerator(QuicklookGenerator):
         for ax, (key, edges, label) in zip(axes2, tof_1d):
             vals = tofs[key][valid[key]]
             counts, _ = np.histogram(vals, bins=edges)
-            ax.stairs(counts, edges, fill=True, color="black", linewidth=0.5)
+            ax.stairs(
+                counts, edges, fill=True, color="steelblue", alpha=0.7, linewidth=0.5
+            )
             ax.set_yscale("log")
             ax.set_ylim(bottom=0.5)
             ax.set_ylabel(f"{label} counts", fontsize=9)
             ax.set_xlabel("TOF (ns)", fontsize=9)
             ax.tick_params(labelsize=8)
 
-        fig2.suptitle(f"Lo L1B 1D TOF Histograms — {self.instrument}", fontsize=12)
+        fig2.suptitle(
+            f"Lo L1B 1D TOF Histograms — {self.instrument}",
+            fontsize=12,
+            fontweight="bold",
+        )
         plt.show()

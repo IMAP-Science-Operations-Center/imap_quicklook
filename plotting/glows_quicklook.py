@@ -12,10 +12,11 @@ from plotting.base_quicklook import QuicklookGenerator, convert_j2000_to_utc
 
 
 class GlowsQuicklookGenerator(QuicklookGenerator):
-    """Hi subclass for MAG quicklook plots."""
+    """GLOWS subclass for GLOWS quicklook plots."""
 
     data_set_l2: xr.Dataset | None = None
     data_set_swe: xr.Dataset | None = None
+    data_set_ialirt: xr.Dataset | None = None
 
     def two_dimensional_plot(self, variable: str = "") -> None:
         """
@@ -40,8 +41,8 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
           - L1b histogram pcolormesh (epoch × spin angle)
           - Total photon counts per block
           - Quality flags heatmap
-          - SWE electron count rate (stub if not loaded)
-          - SWAPI proton moments (stub)
+          - SWE electron normalized counts from i-ALiRT (spectrogram)
+          - SWAPI proton moments from i-ALiRT (density + speed)
 
         Right column (spin-angle profiles + sky map):
           - F10.7 solar flux (stub)
@@ -56,6 +57,7 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
         l1b = self.data_set
         l2: xr.Dataset | None = getattr(self, "data_set_l2", None)
         swe: xr.Dataset | None = getattr(self, "data_set_swe", None)
+        ialirt: xr.Dataset | None = getattr(self, "data_set_ialirt", None)
 
         epoch_dt = convert_j2000_to_utc(l1b["epoch"].values)
         spin_angle_bins = np.arange(3600) * 0.1  # 0.0 to 359.9 degrees
@@ -71,8 +73,6 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
             wspace=0.38,
         )
 
-        # ── Left column: time-series panels ──────────────────────
-
         # Panel 1: L1b histogram pcolormesh (epoch × spin angle → counts)
         ax_hist = fig.add_subplot(gs[0, 0])
         hist_data = l1b["histogram"].values.astype(float)
@@ -86,20 +86,20 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
             shading="auto",
         )
         plt.colorbar(im_hist, ax=ax_hist, label="Counts")
-        ax_hist.set_ylabel("Spin Angle [°]")
+        ax_hist.set_ylabel("Spin Angle [°]", fontsize=10)
         ax_hist.set_ylim(0, 360)
-        ax_hist.set_title("L1B Histogram")
+        ax_hist.set_title("L1B Histogram", fontsize=11)
 
         # Panel 2: Total photon counts per block
         ax_counts = fig.add_subplot(gs[1, 0])
         ax_counts.plot(epoch_dt, l1b["number_of_events"].values, color="steelblue")
-        ax_counts.set_ylabel("Events per Block")
+        ax_counts.set_ylabel("Events per Block", fontsize=10)
         ax_counts.set_xlim(epoch_dt[0], epoch_dt[-1])
-        ax_counts.set_title("Total Photon Counts")
+        ax_counts.set_title("Total Photon Counts", fontsize=11)
 
         # Panel 3: Quality flags heatmap (epoch × flag index)
         ax_flags = fig.add_subplot(gs[2, 0])
-        flags = l1b["flags"].values  # (n_epoch, 17)
+        flags = l1b["flags"].values
         im_flags = ax_flags.pcolormesh(
             epoch_dt,
             np.arange(flags.shape[1]),
@@ -110,20 +110,38 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
             shading="auto",
         )
         plt.colorbar(im_flags, ax=ax_flags, label="Flag set")
-        ax_flags.set_ylabel("Flag Index")
+        ax_flags.set_ylabel("Flag Index", fontsize=10)
         ax_flags.set_ylim(-0.5, flags.shape[1] - 0.5)
-        ax_flags.set_title("Quality Flags")
+        ax_flags.set_title("Quality Flags", fontsize=11)
 
-        # Panel 4: SWE electron count rate
+        # Panel 4: SWE electron normalized counts from i-ALiRT (spectrogram)
         ax_swe = fig.add_subplot(gs[3, 0])
-        if swe is not None:
+        fill = -1e31
+        if ialirt is not None and "swe_normalized_counts" in ialirt:
+            swe_epoch_dt = convert_j2000_to_utc(ialirt["swe_epoch"].values)
+            swe_counts = ialirt["swe_normalized_counts"].values.astype(float)
+            swe_energy = ialirt["swe_electron_energy"].values
+            swe_counts[swe_counts <= fill * 0.9] = np.nan
+            valid = swe_counts[np.isfinite(swe_counts)]
+            vmin = float(valid.min()) if len(valid) else 1.0
+            vmax = float(valid.max()) if len(valid) else 1e4
+            im_swe = ax_swe.pcolormesh(
+                swe_epoch_dt,
+                swe_energy,
+                swe_counts.T,
+                shading="auto",
+                cmap="viridis",
+                norm=mcolors.LogNorm(vmin=max(vmin, 1e-10), vmax=vmax),
+            )
+            plt.colorbar(im_swe, ax=ax_swe, label="Normalized Counts")
+            ax_swe.set_ylabel("Energy [eV]")
+            ax_swe.set_title("SWE Electron Normalized Counts (i-ALiRT)")
+        elif swe is not None:
             swe_epoch_dt = convert_j2000_to_utc(swe["epoch"].values)
-            # science_data: (epoch, esa_step, spin_sector, cem_id)
-            # Sum over spin sectors and CEMs at ESA step 18 (~1 keV)
             sci = swe["science_data"].values.astype(float)
-            fill = swe["science_data"].attrs.get("FILLVAL", None)
-            if fill is not None:
-                sci[sci == fill] = np.nan
+            swe_fill = swe["science_data"].attrs.get("FILLVAL", None)
+            if swe_fill is not None:
+                sci[sci == swe_fill] = np.nan
             rate_1kev = np.nansum(sci[:, 18, :, :], axis=(1, 2))
             ax_swe.plot(swe_epoch_dt, rate_1kev, color="darkorange")
             ax_swe.set_ylabel("Counts")
@@ -139,27 +157,40 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
                 fontsize=11,
                 color="gray",
             )
-            ax_swe.set_title("SWE Electron Count Rate (~1 keV)")
+            ax_swe.set_title("SWE Electron Normalized Counts (i-ALiRT)")
             ax_swe.set_xticks([])
             ax_swe.set_yticks([])
 
-        # Panel 5: SWAPI proton moments (stub)
+        # Panel 5: SWAPI proton moments from i-ALiRT
         ax_swapi = fig.add_subplot(gs[4, 0])
-        ax_swapi.text(
-            0.5,
-            0.5,
-            "SWAPI proton moments\nnot yet available",
-            ha="center",
-            va="center",
-            transform=ax_swapi.transAxes,
-            fontsize=11,
-            color="gray",
-        )
-        ax_swapi.set_title("SWAPI Solar Wind (n_p, v_i)")
-        ax_swapi.set_xticks([])
-        ax_swapi.set_yticks([])
-
-        # ── Right column: spin-angle profiles + sky map ───────────
+        if ialirt is not None and "swapi_pseudo_proton_density" in ialirt:
+            swapi_epoch_dt = convert_j2000_to_utc(ialirt["swapi_epoch"].values)
+            density = ialirt["swapi_pseudo_proton_density"].values.astype(float)
+            speed = ialirt["swapi_pseudo_proton_speed"].values.astype(float)
+            density[density <= fill * 0.9] = np.nan
+            speed[speed <= fill * 0.9] = np.nan
+            ax_swapi.plot(swapi_epoch_dt, density, color="steelblue", linewidth=0.8)
+            ax_swapi.set_ylabel("Density [cm⁻³]", color="steelblue")
+            ax_swapi.tick_params(axis="y", labelcolor="steelblue")
+            ax2_swapi = ax_swapi.twinx()
+            ax2_swapi.plot(swapi_epoch_dt, speed, color="tomato", linewidth=0.8)
+            ax2_swapi.set_ylabel("Speed [km/s]", color="tomato")
+            ax2_swapi.tick_params(axis="y", labelcolor="tomato")
+            ax_swapi.set_title("SWAPI Solar Wind (n_p, v_i) — i-ALiRT")
+        else:
+            ax_swapi.text(
+                0.5,
+                0.5,
+                "SWAPI i-ALiRT data not available\nfor this time period",
+                ha="center",
+                va="center",
+                transform=ax_swapi.transAxes,
+                fontsize=11,
+                color="gray",
+            )
+            ax_swapi.set_title("SWAPI Solar Wind (n_p, v_i) — i-ALiRT")
+            ax_swapi.set_xticks([])
+            ax_swapi.set_yticks([])
 
         # Panel 6: F10.7 solar flux (stub)
         ax_f107 = fig.add_subplot(gs[0, 1])
@@ -195,7 +226,7 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
 
         # Panel 8: L1b histogram summed over epoch vs spin angle
         ax_l1b_sum = fig.add_subplot(gs[2, 1])
-        hist_sum = l1b["histogram"].values.sum(axis=0)  # (3600,)
+        hist_sum = l1b["histogram"].values.sum(axis=0)
         ax_l1b_sum.plot(spin_angle_bins, hist_sum, color="steelblue", linewidth=0.8)
         ax_l1b_sum.set_xlabel("Spin Angle [°]")
         ax_l1b_sum.set_ylabel("Total Counts")
@@ -205,9 +236,8 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
         # Panel 9: L2 photon flux vs spin angle (with uncertainty band)
         ax_flux = fig.add_subplot(gs[3, 1])
         if l2 is not None:
-            spin_angle_l2 = l2["spin_angle"].values[0]  # (3600,)
-            photon_flux = l2["photon_flux"].values[0]  # (3600,)
-            # flux_uncertainties is stored as a coordinate in this file
+            spin_angle_l2 = l2["spin_angle"].values[0]
+            photon_flux = l2["photon_flux"].values[0]
             flux_unc = (
                 l2["flux_uncertainties"].values[0]
                 if "flux_uncertainties" in l2.coords
@@ -246,16 +276,11 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
         # Panel 10: Sky map in ecliptic coordinates
         ax_sky = fig.add_subplot(gs[4, 1])
         if l2 is not None:
-            elon = l2["ecliptic_lon"].values[0]  # (3600,)
-            elat = l2["ecliptic_lat"].values[0]  # (3600,)
-            flux_sky = l2["photon_flux"].values[0]  # (3600,)
+            elon = l2["ecliptic_lon"].values[0]
+            elat = l2["ecliptic_lat"].values[0]
+            flux_sky = l2["photon_flux"].values[0]
             sc = ax_sky.scatter(
-                elon,
-                elat,
-                c=flux_sky,
-                cmap="rainbow",
-                s=3,
-                linewidths=0,
+                elon, elat, c=flux_sky, cmap="rainbow", s=3, linewidths=0
             )
             plt.colorbar(
                 sc,
@@ -265,11 +290,9 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
                 pad=0.12,
                 fraction=0.04,
             )
-            # Mark galactic center (~ecliptic lon=266.4°, lat=-5.6°)
             ax_sky.plot(
                 266.4, -5.6, "k*", markersize=10, label="Galactic Center", zorder=5
             )
-            # Mark ecliptic-coordinate Sun (~lon=0°, lat=0°)
             ax_sky.plot(
                 0, 0, "yo", markersize=8, markeredgecolor="k", label="Sun", zorder=5
             )
@@ -292,7 +315,7 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
             ax_sky.set_title("Sky Map (Ecliptic Coordinates)")
 
         date_str = str(epoch_dt[0])[:10]
-        fig.suptitle(f"GLOWS Quicklook — {date_str}", fontsize=14, fontweight="bold")
+        fig.suptitle(f"GLOWS Quicklook — {date_str}", fontsize=13, fontweight="bold")
         plt.show()
 
     def ancillary_data(self) -> None:
@@ -323,19 +346,16 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
         ds = self.data_set
         epoch_dt = convert_j2000_to_utc(ds["epoch"].values)
 
-        # Derive spacecraft ecliptic lon/lat from Cartesian location
-        loc = ds["spacecraft_location_average"].values  # (N, 3) km
-        loc_std = ds["spacecraft_location_std_dev"].values  # (N, 3) km
+        loc = ds["spacecraft_location_average"].values
+        loc_std = ds["spacecraft_location_std_dev"].values
         x, y, z = loc[:, 0], loc[:, 1], loc[:, 2]
         r = np.sqrt(x**2 + y**2 + z**2)
         r_xy = np.sqrt(x**2 + y**2)
         sc_lon = np.degrees(np.arctan2(y, x)) % 360
         sc_lat = np.degrees(np.arcsin(np.clip(z / r, -1, 1)))
-        # Angular uncertainties from Cartesian std devs (small-angle approximation)
         sc_lon_std = np.degrees(loc_std[:, 1] / np.where(r_xy > 0, r_xy, 1))
         sc_lat_std = np.degrees(loc_std[:, 2] / np.where(r > 0, r, 1))
 
-        # Panel definitions: (left_data, right_data, left_label, right_label)
         left_panels = [
             (
                 ds["number_of_events"].values,
@@ -381,18 +401,8 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
                 "Pulse avg [μs]",
                 "Pulse std dev [μs]",
             ),
-            (
-                sc_lon,
-                sc_lon_std,
-                "Lon avg [deg]",
-                "Lon std dev [deg]",
-            ),
-            (
-                sc_lat,
-                sc_lat_std,
-                "Lat avg [deg]",
-                "Lat std dev [deg]",
-            ),
+            (sc_lon, sc_lon_std, "Lon avg [deg]", "Lon std dev [deg]"),
+            (sc_lat, sc_lat_std, "Lat avg [deg]", "Lat std dev [deg]"),
             (
                 ds["number_of_bins_per_histogram"].values,
                 ds["number_of_spins_per_block"].values,
@@ -402,11 +412,7 @@ class GlowsQuicklookGenerator(QuicklookGenerator):
         ]
 
         fig, axes = plt.subplots(
-            5,
-            2,
-            figsize=(18, 16),
-            sharex=True,
-            constrained_layout=False,
+            5, 2, figsize=(18, 16), sharex=True, constrained_layout=False
         )
         fig.subplots_adjust(hspace=0.30, wspace=0.55)
 

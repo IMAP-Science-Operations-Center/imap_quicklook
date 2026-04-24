@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 from plotting.cdf.cdf_utils import load_cdf
 from plotting.quicklook_generator import HitQuicklookGenerator
+from plotting.save_utils import capture_plots
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,6 +18,36 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).parent / "plotting" / "data"
+OUTPUT_DIR = Path(__file__).parent / "output"
+
+
+_DATE_RE = re.compile(r"_(\d{8})")
+
+
+def find_ialirt_file(data_dir: Path, cdf_file: Path) -> Path | None:
+    """
+    Return the matching i-ALiRT CDF file for a given instrument CDF file.
+
+    Parameters
+    ----------
+    data_dir : Path
+        Root data directory containing the ``ialirt/`` subdirectory.
+    cdf_file : Path
+        Path to the instrument CDF file whose date tag will be matched.
+
+    Returns
+    -------
+    Path or None
+        Path to the matching i-ALiRT file, or ``None`` if not found.
+    """
+    m = _DATE_RE.search(cdf_file.name)
+    if not m:
+        return None
+    date = m.group(1)
+    candidates = sorted(
+        (data_dir / "ialirt").glob(f"imap_ialirt_l1_realtime_{date}_*.cdf")
+    )
+    return candidates[-1] if candidates else None
 
 
 def find_hit_files(data_dir: Path, level_prefix: str) -> list[Path]:
@@ -52,6 +84,7 @@ def generate_hit_quicklooks(data_dir: Path) -> None:
     Plot types are matched to files by data level:
 
     - l2 files → hit ion flux
+    - l2 files + matching i-ALiRT file → electron count rate
 
     Parameters
     ----------
@@ -77,7 +110,23 @@ def generate_hit_quicklooks(data_dir: Path) -> None:
         gen.instrument = "hit"
 
         logger.info("  Generating 'hit ion flux'")
-        gen.two_dimensional_plot("hit ion flux")
+        with capture_plots(OUTPUT_DIR / "hit", f"{cdf_file.stem}_hit_ion_flux"):
+            gen.two_dimensional_plot("hit ion flux")
+
+        ialirt_file = find_ialirt_file(data_dir, cdf_file)
+        if ialirt_file:
+            logger.info("  Loading i-ALiRT: %s", ialirt_file.name)
+            gen.data_set_ialirt = load_cdf(ialirt_file)
+            logger.info("  Generating 'electron count rate'")
+            with capture_plots(
+                OUTPUT_DIR / "hit", f"{cdf_file.stem}_electron_count_rate"
+            ):
+                gen.two_dimensional_plot("electron count rate")
+        else:
+            logger.warning(
+                "  No i-ALiRT file found for %s — skipping electron count rate",
+                cdf_file.name,
+            )
 
 
 if __name__ == "__main__":

@@ -137,8 +137,8 @@ class HiQuicklookGenerator(QuicklookGenerator):
 
         cbar_ax = fig.add_axes([0.90, 0.15, 0.02, 0.7])
         fig.colorbar(im, cax=cbar_ax, label="Counts")
-        axes[0].set_title(title)
-        axes[-1].set_xlabel("Time (UTC)")
+        axes[0].set_title(title, fontsize=12, fontweight="bold")
+        axes[-1].set_xlabel("Time (UTC)", fontsize=10)
         plt.show()
 
     def hi_histogram(self, histogram_types: list[str] | None = None) -> None:
@@ -184,7 +184,7 @@ class HiQuicklookGenerator(QuicklookGenerator):
         self._plot_esa_grid(
             grid,
             col_times,
-            f"Hi L1A Histogram — {self.instrument} — {'+'.join(histogram_types)}",
+            f"Hi L1A Histogram — {self.instrument}",
         )
 
     def de_histogram(self) -> None:
@@ -382,7 +382,10 @@ class HiQuicklookGenerator(QuicklookGenerator):
             ]
             fig.legend(handles=legend_handles, loc="upper right", fontsize=8)
             fig.suptitle(
-                f"Hi L1B TOF: {label} — {self.instrument}", fontsize=11, y=1.01
+                f"Hi L1B TOF: {label} — {self.instrument}",
+                fontsize=12,
+                fontweight="bold",
+                y=1.01,
             )
             plt.show()
 
@@ -434,7 +437,8 @@ class HiQuicklookGenerator(QuicklookGenerator):
         fig2.colorbar(im2, ax=axes2_flat[-1], label="Counts (log scale)", shrink=0.8)
         fig2.suptitle(
             f"Hi L1B 2D TOF: tB-tA vs tC1-tA (2 ns bins) — {self.instrument}",
-            fontsize=11,
+            fontsize=12,
+            fontweight="bold",
         )
         plt.show()
 
@@ -465,7 +469,8 @@ class HiQuicklookGenerator(QuicklookGenerator):
         ax3.set_ylabel("tC2 - tC1 (ns)", fontsize=10)
         ax3.set_title(
             f"Hi L1B 2D TOF: tB-tA vs tC2-tC1 (all ESA) — {self.instrument}",
-            fontsize=11,
+            fontsize=12,
+            fontweight="bold",
         )
         plt.tight_layout()
         plt.show()

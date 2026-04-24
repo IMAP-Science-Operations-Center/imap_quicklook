@@ -5,12 +5,15 @@ from __future__ import annotations
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+import xarray as xr
 
 from plotting.base_quicklook import QuicklookGenerator, convert_j2000_to_utc
 
 
 class HitQuicklookGenerator(QuicklookGenerator):
-    """Hi subclass for MAG quicklook plots."""
+    """HIT subclass for HIT quicklook plots."""
+
+    data_set_ialirt: xr.Dataset | None = None
 
     def two_dimensional_plot(self, variable: str = "") -> None:
         """
@@ -43,8 +46,6 @@ class HitQuicklookGenerator(QuicklookGenerator):
         ds = self.data_set
         epoch_dt = convert_j2000_to_utc(ds["epoch"].values)
 
-        # Build time edges: midpoints between consecutive epochs,
-        # with ±30 s padding at the ends.
         ep_ns = epoch_dt.astype("datetime64[ns]").astype(np.int64)
         thirty_s_ns = int(30e9)
         mid_ns = (ep_ns[:-1] + ep_ns[1:]) // 2
@@ -53,7 +54,6 @@ class HitQuicklookGenerator(QuicklookGenerator):
         )
         time_edges = edge_ns.astype("datetime64[ns]")
 
-        # Species: (flux_var, energy_mean_coord, dm_coord, dp_coord, label, energy_unit)
         species = [
             (
                 "h_standard_intensity",
@@ -89,44 +89,31 @@ class HitQuicklookGenerator(QuicklookGenerator):
             ),
         ]
 
-        # Rainbow colormap with black for masked (fill / zero) values
-        cmap = plt.get_cmap("rainbow").copy()
-        cmap.set_bad("black")
-        cmap.set_under("black")
+        cmap = plt.get_cmap("viridis").copy()
+        cmap.set_bad("whitesmoke")
 
         fig, axes = plt.subplots(
-            4,
-            1,
-            figsize=(14, 11),
-            sharex=True,
-            constrained_layout=False,
+            4, 1, figsize=(14, 11), sharex=True, constrained_layout=False
         )
-        fig.patch.set_facecolor("black")
         fig.subplots_adjust(hspace=0, right=0.80, top=0.93, bottom=0.08)
 
         for ax, (flux_var, en_key, dm_key, dp_key, label, en_unit) in zip(
             axes, species
         ):
-            flux = ds[flux_var].values.astype(float)  # (N_time, N_energy)
+            flux = ds[flux_var].values.astype(float)
             energy_mean = ds[en_key].values
             dm = ds[dm_key].values
             dp = ds[dp_key].values
 
-            # Energy bin edges: lower edge of each bin + upper edge of last bin
             energy_edges = np.append(energy_mean - dm, energy_mean[-1] + dp[-1])
-
-            # Mask fill values (≤ 0 covers fill=-1e31 and genuine zero-count bins)
             flux[flux <= 0] = np.nan
 
-            # Per-species colorbar range from valid data
             valid = flux[np.isfinite(flux)]
             vmin = float(valid.min()) if len(valid) else 1e-4
             vmax = float(valid.max()) if len(valid) else 1e4
-            # Guard against vmin == vmax (all-zero or single-value file)
             if vmin >= vmax:
                 vmin, vmax = 1e-4, 1e4
 
-            ax.set_facecolor("black")
             im = ax.pcolormesh(
                 time_edges,
                 energy_edges,
@@ -136,12 +123,8 @@ class HitQuicklookGenerator(QuicklookGenerator):
                 shading="flat",
             )
             ax.set_yscale("log")
-            ax.set_ylabel(f"Energy\n({en_unit})", color="white", fontsize=9)
-            ax.tick_params(colors="white", which="both")
-            for spine in ax.spines.values():
-                spine.set_color("white")
+            ax.set_ylabel(f"Energy\n({en_unit})", fontsize=9)
 
-            # Species label — upper-right corner
             ax.text(
                 0.99,
                 0.97,
@@ -149,45 +132,81 @@ class HitQuicklookGenerator(QuicklookGenerator):
                 transform=ax.transAxes,
                 ha="right",
                 va="top",
-                color="white",
                 fontsize=11,
                 fontweight="bold",
             )
 
-            # Individual colorbar
             cbar_ax = fig.add_axes(
                 [
-                    0.82,  # left
-                    ax.get_position().y0 + 0.005,  # bottom (with small padding)
-                    0.015,  # width
-                    ax.get_position().height - 0.01,  # height
+                    0.82,
+                    ax.get_position().y0 + 0.005,
+                    0.015,
+                    ax.get_position().height - 0.01,
                 ]
             )
             cbar = fig.colorbar(im, cax=cbar_ax)
-            cbar.set_label(
-                "Flux\n[cm⁻² sr⁻¹ s⁻¹\n(MeV/nuc)⁻¹]",
-                color="white",
-                fontsize=7,
-            )
-            cbar.ax.tick_params(colors="white", labelsize=7)
-            cbar.ax.yaxis.set_tick_params(color="white")
+            cbar.set_label("Flux\n[cm⁻² sr⁻¹ s⁻¹\n(MeV/nuc)⁻¹]", fontsize=7)
+            cbar.ax.tick_params(labelsize=7)
 
-        axes[-1].set_xlabel("UTC Time", color="white", fontsize=10)
-        axes[-1].tick_params(axis="x", colors="white", labelsize=8)
-        # Hide x-tick labels on non-bottom panels (sharex handles ticks,
-        # but spines still need styling)
+        axes[-1].set_xlabel("UTC Time", fontsize=10)
+        axes[-1].tick_params(axis="x", labelsize=8)
         for ax in axes[:-1]:
             ax.tick_params(axis="x", labelbottom=False)
 
         date_str = str(epoch_dt[0])[:10]
         fig.suptitle(
-            f"HIT Ion Flux Spectrograms — {date_str}",
-            color="white",
-            fontsize=12,
-            fontweight="bold",
+            f"HIT Ion Flux Spectrograms — {date_str}", fontsize=12, fontweight="bold"
         )
         plt.show()
 
     def electron_count_rate(self) -> None:
-        """TODO."""
-        raise NotImplementedError
+        """
+        Generate HIT i-ALiRT electron count rate plot.
+
+        Two vertically stacked line plots showing electron count rates over
+        time: B-side (sunward) on top, A-side (anti-sunward) on bottom.
+
+        X = Time (UTC)
+        Y = Count Rate (s⁻¹)
+        """
+        ialirt: xr.Dataset | None = getattr(self, "data_set_ialirt", None)
+        if ialirt is None:
+            raise ValueError("Must load i-ALiRT dataset.")
+
+        epoch_dt = convert_j2000_to_utc(ialirt["hit_epoch"].values)
+        fill = -1e31
+
+        def _mask(arr: np.ndarray) -> np.ndarray:
+            """
+            Replace fill-value entries with NaN.
+
+            Parameters
+            ----------
+            arr : np.ndarray
+                Input array that may contain fill values.
+
+            Returns
+            -------
+            np.ndarray
+                Float copy of ``arr`` with fill values replaced by NaN.
+            """
+            out = arr.astype(float).copy()
+            out[out <= fill * 0.9] = np.nan
+            return out
+
+        b_side = _mask(ialirt["hit_e_b_side_med_en"].values)
+        a_side = _mask(ialirt["hit_e_a_side_med_en"].values)
+
+        fig, axes = plt.subplots(2, 1, figsize=(14, 6), sharex=True)
+
+        axes[0].plot(epoch_dt, b_side, color="steelblue", linewidth=0.8)
+        axes[0].set_ylabel("Count Rate [s⁻¹]")
+        axes[0].set_title("HIT e⁻ <1 MeV — B Side (Sunward)")
+
+        axes[1].plot(epoch_dt, a_side, color="tomato", linewidth=0.8)
+        axes[1].set_ylabel("Count Rate [s⁻¹]")
+        axes[1].set_xlabel("Time (UTC)")
+        axes[1].set_title("HIT e⁻ <1 MeV — A Side (Anti-Sunward)")
+
+        plt.tight_layout()
+        plt.show()

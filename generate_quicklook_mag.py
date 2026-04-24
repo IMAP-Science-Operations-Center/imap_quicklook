@@ -7,6 +7,7 @@ from pathlib import Path
 
 from plotting.cdf.cdf_utils import load_cdf
 from plotting.quicklook_generator import MagQuicklookGenerator
+from plotting.save_utils import capture_plots
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,6 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).parent / "plotting" / "data"
+OUTPUT_DIR = Path(__file__).parent / "output"
 
 # Maps data level prefix to the plot types that require it.
 LEVEL_PLOT_MAP: dict[str, list[str]] = {
@@ -93,7 +95,9 @@ def generate_mag_quicklooks(data_dir: Path) -> None:
 
             for plot_type in plot_types:
                 logger.info("  Generating '%s'", plot_type)
-                gen.two_dimensional_plot(plot_type)
+                stem = f"{cdf_file.stem}_{plot_type.replace(' ', '_')}"
+                with capture_plots(OUTPUT_DIR / "mag", stem):
+                    gen.two_dimensional_plot(plot_type)
 
 
 if __name__ == "__main__":

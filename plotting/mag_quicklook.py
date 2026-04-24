@@ -41,8 +41,10 @@ class MagQuicklookGenerator(QuicklookGenerator):
             ax.plot(epoch_dt, vector_data.isel(direction=i))
             ax.set_ylabel(f"B_{label} [nT]")
 
-        axes[-1].set_xlabel("Time (UTC)")
-        fig.suptitle("MAG Sensor Coordinates (X, Y, Z) [nT]")
+        axes[-1].set_xlabel("Time (UTC)", fontsize=10)
+        fig.suptitle(
+            "MAG Sensor Coordinates (X, Y, Z) [nT]", fontsize=12, fontweight="bold"
+        )
         plt.tight_layout()
         plt.show()
 
@@ -67,8 +69,12 @@ class MagQuicklookGenerator(QuicklookGenerator):
 
         axes[3].plot(epoch_dt, magnitude)
         axes[3].set_ylabel("|B| [nT]")
-        axes[3].set_xlabel("Time (UTC)")
+        axes[3].set_xlabel("Time (UTC)", fontsize=10)
 
-        fig.suptitle("MAG GSE Coordinates (X, Y, Z) + Magnitude [nT]")
+        fig.suptitle(
+            "MAG GSE Coordinates (X, Y, Z) + Magnitude [nT]",
+            fontsize=12,
+            fontweight="bold",
+        )
         plt.tight_layout()
         plt.show()
